@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Phase 2 context gathered
-last_updated: "2026-03-19T14:49:47.950Z"
+stopped_at: Completed 02-01-PLAN.md — dependencies installed, types defined, Wave 0 scaffolds written
+last_updated: "2026-03-19T15:38:20.908Z"
 last_activity: 2026-03-19 — Roadmap created
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 8
+  completed_plans: 4
   percent: 0
 ---
 
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-foundation P01 | 569 | 2 tasks | 9 files |
 | Phase 01-foundation P02 | 279 | 2 tasks | 3 files |
 | Phase 01-foundation P03 | 350 | 2 tasks | 6 files |
+| Phase 02-image-processing-pipeline P01 | 7 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,9 @@ Recent decisions affecting current work:
 - [Phase 01-foundation]: InstanceType<typeof SimpleSigner> instead of SimpleSigner as type annotation — applesauce-signers exports SimpleSigner as value, not named type
 - [Phase 01-foundation]: InstanceType<typeof SimpleSigner> required as return/param type because SimpleSigner is a const alias in applesauce-signers@5.1.0
 - [Phase 01-foundation]: AlbumManifest and PhotoEntry interfaces established as the canonical data contract between all phases
+- [Phase 02-image-processing-pipeline]: exifr installed as devDependency (test-only) — not in production bundle
+- [Phase 02-image-processing-pipeline]: ProcessedPhoto interface: width/height are ORIGINAL pre-resize dimensions feeding PhotoEntry for Phase 4 layout
+- [Phase 02-image-processing-pipeline]: Wave 0 RED tests committed before implementation — 3 fail (no impl), 1 passes (static EXIF-strip proof)
 
 ### Pending Todos
 
@@ -84,6 +88,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T14:49:47.949Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-image-processing-pipeline/02-CONTEXT.md
+Last session: 2026-03-19T15:38:20.906Z
+Stopped at: Completed 02-01-PLAN.md — dependencies installed, types defined, Wave 0 scaffolds written
+Resume file: None

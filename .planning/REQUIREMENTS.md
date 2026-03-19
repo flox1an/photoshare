@@ -9,15 +9,15 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Image Processing
 
-- [ ] **PROC-01**: User can drag-and-drop image files to upload
-- [ ] **PROC-02**: User can drag-and-drop entire folders to upload
-- [ ] **PROC-03**: All EXIF data including geolocation is stripped client-side before upload
-- [ ] **PROC-04**: Images are resized to full-screen optimized dimensions client-side
-- [ ] **PROC-05**: Images are converted to WebP format client-side
-- [ ] **PROC-06**: Thumbnails are generated client-side for each image
-- [ ] **PROC-07**: HEIC/HEIF files from iPhones are detected and converted client-side
-- [ ] **PROC-08**: Image processing runs in Web Workers to avoid blocking the UI
-- [ ] **PROC-09**: Processing handles up to 200 photos without crashing the browser (memory-managed pipeline)
+- [x] **PROC-01**: User can drag-and-drop image files to upload
+- [x] **PROC-02**: User can drag-and-drop entire folders to upload
+- [x] **PROC-03**: All EXIF data including geolocation is stripped client-side before upload
+- [x] **PROC-04**: Images are resized to full-screen optimized dimensions client-side
+- [x] **PROC-05**: Images are converted to WebP format client-side
+- [x] **PROC-06**: Thumbnails are generated client-side for each image
+- [x] **PROC-07**: HEIC/HEIF files from iPhones are detected and converted client-side
+- [x] **PROC-08**: Image processing runs in Web Workers to avoid blocking the UI
+- [x] **PROC-09**: Processing handles up to 200 photos without crashing the browser (memory-managed pipeline)
 
 ### Encryption
 
@@ -88,15 +88,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PROC-01 | Phase 2 | Pending |
-| PROC-02 | Phase 2 | Pending |
-| PROC-03 | Phase 2 | Pending |
-| PROC-04 | Phase 2 | Pending |
-| PROC-05 | Phase 2 | Pending |
-| PROC-06 | Phase 2 | Pending |
-| PROC-07 | Phase 2 | Pending |
-| PROC-08 | Phase 2 | Pending |
-| PROC-09 | Phase 2 | Pending |
+| PROC-01 | Phase 2 | Complete |
+| PROC-02 | Phase 2 | Complete |
+| PROC-03 | Phase 2 | Complete |
+| PROC-04 | Phase 2 | Complete |
+| PROC-05 | Phase 2 | Complete |
+| PROC-06 | Phase 2 | Complete |
+| PROC-07 | Phase 2 | Complete |
+| PROC-08 | Phase 2 | Complete |
+| PROC-09 | Phase 2 | Complete |
 | CRYPT-01 | Phase 1 | Complete |
 | CRYPT-02 | Phase 1 | Complete |
 | CRYPT-03 | Phase 1 | Complete |
