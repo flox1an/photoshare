@@ -20,19 +20,19 @@
  */
 export async function validateBlossomServer(url: string): Promise<boolean> {
   try {
+    // Use GET (not HEAD) — some Blossom servers don't support HEAD or don't
+    // return CORS headers on HEAD. GET to the root is universally supported.
     const response = await fetch(url, {
-      method: "HEAD",
+      method: "GET",
       signal: AbortSignal.timeout(5000),
     });
 
-    if (!response.ok) {
-      return false;
-    }
-
-    // CORS check — required for browser-based uploads (CONF-02)
-    const corsHeader = response.headers.get("access-control-allow-origin");
-    return corsHeader !== null;
+    // Any response that reaches us means CORS passed — the browser would have
+    // thrown a TypeError (network error) if the server blocked cross-origin.
+    // We just need to confirm the server is reachable and responding.
+    return response.ok || response.status === 404 || response.status === 405;
   } catch {
+    // fetch() throws TypeError on CORS block, network error, or timeout
     return false;
   }
 }
