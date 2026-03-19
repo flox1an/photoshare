@@ -50,7 +50,7 @@ export async function decryptBlob(
   iv: Uint8Array,
 ): Promise<ArrayBuffer> {
   return crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: iv as Uint8Array<ArrayBuffer> },
+    { name: "AES-GCM", iv: new Uint8Array(iv) },
     key,
     ciphertext,
   );
@@ -71,7 +71,9 @@ export async function exportKeyToBase64url(key: CryptoKey): Promise<string> {
  */
 export async function importKeyFromBase64url(b64url: string): Promise<CryptoKey> {
   const raw = base64urlToUint8Array(b64url);
-  return crypto.subtle.importKey("raw", raw.buffer as ArrayBuffer, { name: "AES-GCM" }, false, ["decrypt"]);
+  const keyBuffer = new ArrayBuffer(raw.byteLength);
+  new Uint8Array(keyBuffer).set(raw);
+  return crypto.subtle.importKey("raw", keyBuffer, { name: "AES-GCM" }, false, ["decrypt"]);
 }
 
 /**

@@ -3,7 +3,7 @@ import { createEphemeralSigner, getSignerPubkey } from "@/lib/nostr/signer";
 import { encodeAlbumNaddr, decodeAlbumNaddr } from "@/lib/nostr/naddr";
 
 describe("createEphemeralSigner (UPLD-04)", () => {
-  it("returns a SimpleSigner instance", () => {
+  it("returns a PrivateKeySigner instance", () => {
     const signer = createEphemeralSigner();
     expect(signer).toBeDefined();
     expect(typeof signer.getPublicKey).toBe("function");
