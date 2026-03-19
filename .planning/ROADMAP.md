@@ -12,7 +12,7 @@ Four phases deliver the complete photo-sharing pipeline in strict dependency ord
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation** - Next.js project, AES-256-GCM crypto module, ephemeral keypair, SSR boundaries, and config defaults
+- [x] **Phase 1: Foundation** - Next.js project, AES-256-GCM crypto module, ephemeral keypair, SSR boundaries, and config defaults (completed 2026-03-19)
 - [ ] **Phase 2: Image Processing Pipeline** - Client-side EXIF strip, resize, WebP convert, thumbnail generation, HEIC handling, and memory-safe batch processing in a Web Worker
 - [ ] **Phase 3: Upload and Publishing** - Blossom blob upload with SHA-256 verification, Nostr kind 30078 event publish with NIP-40 expiry, upload progress UI, and configurable relay/server settings
 - [ ] **Phase 4: Share Link and Viewer** - Share link generation with key in URL fragment, relay hints encoding, thumbnail grid gallery, lightbox slideshow, and download-all
@@ -77,7 +77,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 2/3 | In Progress|  |
+| 1. Foundation | 3/3 | Complete   | 2026-03-19 |
 | 2. Image Processing Pipeline | 0/? | Not started | - |
 | 3. Upload and Publishing | 0/? | Not started | - |
 | 4. Share Link and Viewer | 0/? | Not started | - |
