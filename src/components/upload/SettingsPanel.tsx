@@ -14,11 +14,12 @@ export function SettingsPanel({ settings }: SettingsPanelProps) {
   const [blossomError, setBlossomError] = useState<string | null>(settings.blossomError);
   const [isValidating, setIsValidating] = useState(settings.isValidating);
 
-  const handleSaveBlossomServer = async () => {
+  const handleSaveBlossomServer = async (url?: string) => {
+    const target = url ?? blossomInput;
     setIsValidating(true);
     setBlossomError(null);
 
-    const isValid = await validateBlossomServer(blossomInput);
+    const isValid = await validateBlossomServer(target);
 
     if (!isValid) {
       setBlossomError('Server does not allow browser uploads (CORS)');
@@ -26,7 +27,8 @@ export function SettingsPanel({ settings }: SettingsPanelProps) {
       return;
     }
 
-    await settings.setBlossomServer(blossomInput);
+    await settings.setBlossomServer(target);
+    setBlossomError(null);
     setIsValidating(false);
   };
 
@@ -81,11 +83,22 @@ export function SettingsPanel({ settings }: SettingsPanelProps) {
                 className="flex-1 rounded border border-gray-200 p-2 text-sm font-mono"
                 value={blossomInput}
                 onChange={(e) => setBlossomInput(e.target.value)}
+                onBlur={() => {
+                  if (blossomInput !== settings.blossomServer) {
+                    void handleSaveBlossomServer(blossomInput);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    void handleSaveBlossomServer(blossomInput);
+                  }
+                }}
                 placeholder="https://your-blossom-server.com"
               />
               <button
                 type="button"
-                onClick={handleSaveBlossomServer}
+                onClick={() => void handleSaveBlossomServer()}
                 disabled={isValidating}
                 className="shrink-0 rounded bg-gray-800 px-3 py-2 text-sm text-white hover:bg-gray-700 disabled:opacity-50"
               >
