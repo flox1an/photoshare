@@ -3,8 +3,8 @@
  * ProcessedPhoto is the handoff contract from Phase 2 → Phase 3 (encrypt + upload).
  */
 
-/** Status of a single photo in the processing queue */
-export type PhotoProcessingStatus = 'pending' | 'processing' | 'done' | 'error';
+/** Status of a single photo in the processing or upload queue */
+export type PhotoProcessingStatus = 'pending' | 'processing' | 'encrypting' | 'uploading' | 'done' | 'error';
 
 /** Per-photo state tracked in the Zustand store during processing */
 export interface PhotoProcessingState {

@@ -52,6 +52,8 @@ function StatusDot({ status }: { status: PhotoProcessingState['status'] }) {
   const colors: Record<typeof status, string> = {
     pending: 'bg-gray-300',
     processing: 'bg-blue-400 animate-pulse',
+    encrypting: 'bg-purple-400 animate-pulse',
+    uploading: 'bg-indigo-400 animate-pulse',
     done: 'bg-green-500',
     error: 'bg-red-500',
   };
