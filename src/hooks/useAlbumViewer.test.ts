@@ -4,10 +4,13 @@ import { vi, describe, it, expect, beforeEach } from "vitest";
 vi.mock("jszip", () => {
   const mockFile = vi.fn();
   const mockGenerateAsync = vi.fn().mockResolvedValue(new Blob(["zip-content"], { type: "application/zip" }));
-  const MockJSZip = vi.fn().mockImplementation(() => ({
-    file: mockFile,
-    generateAsync: mockGenerateAsync,
-  }));
+  // vitest 4.x requires function() (not arrow) for constructor mocks
+  const MockJSZip = vi.fn().mockImplementation(function () {
+    return {
+      file: mockFile,
+      generateAsync: mockGenerateAsync,
+    };
+  });
   return { default: MockJSZip };
 });
 
@@ -58,13 +61,23 @@ describe("useAlbumViewer", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Re-setup mock after clearAllMocks
-    MockJSZip.mockImplementation(() => ({
-      file: vi.fn(),
-      generateAsync: vi.fn().mockResolvedValue(new Blob(["zip-content"])),
-    }));
+    // vitest 4.x requires function() (not arrow) for constructor mocks
+    MockJSZip.mockImplementation(function () {
+      return {
+        file: vi.fn(),
+        generateAsync: vi.fn().mockResolvedValue(new Blob(["zip-content"])),
+      };
+    });
   });
 
   it("downloadAll calls JSZip.file() for each photo with photo.filename", async () => {
+    // Create a fake CryptoKey-like object for testing
+    const fakeKey = {} as CryptoKey;
+
+    // Render hook BEFORE installing createElement spy to avoid recursive mock issue
+    // (renderHook uses document.createElement internally; the spy is only needed for downloadAll)
+    const { result } = renderHook(() => useAlbumViewer());
+
     // Mock URL.createObjectURL and anchor element for download trigger
     const mockCreateObjectURL = vi.fn().mockReturnValue("blob:mock");
     const mockRevokeObjectURL = vi.fn();
@@ -75,17 +88,13 @@ describe("useAlbumViewer", () => {
     const mockRemove = vi.fn();
     vi.spyOn(document.body, "appendChild").mockImplementation(mockAppend);
     vi.spyOn(document.body, "removeChild").mockImplementation(mockRemove);
+    const originalCreateElement = document.createElement.bind(document);
     vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
       if (tag === "a") {
         return { href: "", download: "", click: mockClick } as unknown as HTMLElement;
       }
-      return document.createElement(tag);
+      return originalCreateElement(tag);
     });
-
-    // Create a fake CryptoKey-like object for testing
-    const fakeKey = {} as CryptoKey;
-
-    const { result } = renderHook(() => useAlbumViewer());
 
     await act(async () => {
       await result.current.downloadAll(samplePhotos, fakeKey, "https://blossom.example.com");
@@ -104,26 +113,29 @@ describe("useAlbumViewer", () => {
   });
 
   it("downloadAll reports progress incrementally", async () => {
-    const mockCreateObjectURL = vi.fn().mockReturnValue("blob:mock");
-    const mockRevokeObjectURL = vi.fn();
-    vi.stubGlobal("URL", { createObjectURL: mockCreateObjectURL, revokeObjectURL: mockRevokeObjectURL });
-
-    vi.spyOn(document.body, "appendChild").mockImplementation(vi.fn());
-    vi.spyOn(document.body, "removeChild").mockImplementation(vi.fn());
-    vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
-      if (tag === "a") {
-        return { href: "", download: "", click: vi.fn() } as unknown as HTMLElement;
-      }
-      return document.createElement(tag);
-    });
-
     const progressCalls: Array<[number, number]> = [];
     const onProgress = vi.fn().mockImplementation((current: number, total: number) => {
       progressCalls.push([current, total]);
     });
 
     const fakeKey = {} as CryptoKey;
+
+    // Render hook BEFORE installing createElement spy to avoid recursive mock issue
     const { result } = renderHook(() => useAlbumViewer());
+
+    const mockCreateObjectURL = vi.fn().mockReturnValue("blob:mock");
+    const mockRevokeObjectURL = vi.fn();
+    vi.stubGlobal("URL", { createObjectURL: mockCreateObjectURL, revokeObjectURL: mockRevokeObjectURL });
+
+    vi.spyOn(document.body, "appendChild").mockImplementation(vi.fn());
+    vi.spyOn(document.body, "removeChild").mockImplementation(vi.fn());
+    const originalCreateElement = document.createElement.bind(document);
+    vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
+      if (tag === "a") {
+        return { href: "", download: "", click: vi.fn() } as unknown as HTMLElement;
+      }
+      return originalCreateElement(tag);
+    });
 
     await act(async () => {
       await result.current.downloadAll(samplePhotos, fakeKey, "https://blossom.example.com", onProgress);
