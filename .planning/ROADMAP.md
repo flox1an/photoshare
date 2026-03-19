@@ -92,5 +92,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Foundation | 3/3 | Complete   | 2026-03-19 |
 | 2. Image Processing Pipeline | 3/5 | In Progress|  |
-| 3. Upload and Publishing | 1/6 | In Progress|  |
+| 3. Upload and Publishing | 2/6 | In Progress|  |
 | 4. Share Link and Viewer | 0/? | Not started | - |
