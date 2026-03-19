@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 02-04-PLAN.md — Zustand processing store and useImageProcessor hook implemented; all 43 tests GREEN
-last_updated: "2026-03-19T15:47:39.919Z"
+stopped_at: Completed 02-05-PLAN.md — Upload UI with DropZone, ProgressList, and UploadPanel; browser verification approved
+last_updated: "2026-03-19T16:01:05.550Z"
 last_activity: 2026-03-19 — Roadmap created
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
   percent: 0
 ---
 
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02-image-processing-pipeline P03 | 1 | 1 tasks | 1 files |
 | Phase 02-image-processing-pipeline P02 | 3 | 2 tasks | 3 files |
 | Phase 02-image-processing-pipeline P04 | 1 | 2 tasks | 2 files |
+| Phase 02-image-processing-pipeline P05 | 45 | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,8 @@ Recent decisions affecting current work:
 - [Phase 02-image-processing-pipeline]: Worker re-implements HEIC detection inline to avoid Worker import boundary complexity
 - [Phase 02-image-processing-pipeline]: mimeType read from blob.type after convertToBlob — Safari returns image/png silently; viewer handles both
 - [Phase 02-image-processing-pipeline]: useImageProcessor creates worker in useEffect for SSR safety; p-limit(4) gates 144 MB peak GPU memory ceiling; addPhotos accumulates across drops
+- [Phase 02-image-processing-pipeline]: Native onDrop intercepts folder drops using webkitGetAsEntry; react-dropzone handles file picker and individual file drops
+- [Phase 02-image-processing-pipeline]: Files streamed into store in chunks during native drop handling to prevent UI lag on large batches
 
 ### Pending Todos
 
@@ -94,6 +97,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T15:47:39.918Z
-Stopped at: Completed 02-04-PLAN.md — Zustand processing store and useImageProcessor hook implemented; all 43 tests GREEN
+Last session: 2026-03-19T16:01:05.549Z
+Stopped at: Completed 02-05-PLAN.md — Upload UI with DropZone, ProgressList, and UploadPanel; browser verification approved
 Resume file: None
