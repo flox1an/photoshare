@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 02-01-PLAN.md — dependencies installed, types defined, Wave 0 scaffolds written
-last_updated: "2026-03-19T15:38:20.908Z"
+stopped_at: Completed 02-02-PLAN.md — heic-detect, dimensions, and image-processor worker implemented; all tests GREEN
+last_updated: "2026-03-19T15:43:12.853Z"
 last_activity: 2026-03-19 — Roadmap created
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 8
-  completed_plans: 4
+  completed_plans: 6
   percent: 0
 ---
 
@@ -54,6 +54,8 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-foundation P02 | 279 | 2 tasks | 3 files |
 | Phase 01-foundation P03 | 350 | 2 tasks | 6 files |
 | Phase 02-image-processing-pipeline P01 | 7 | 2 tasks | 7 files |
+| Phase 02-image-processing-pipeline P03 | 1 | 1 tasks | 1 files |
+| Phase 02-image-processing-pipeline P02 | 3 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -75,6 +77,8 @@ Recent decisions affecting current work:
 - [Phase 02-image-processing-pipeline]: exifr installed as devDependency (test-only) — not in production bundle
 - [Phase 02-image-processing-pipeline]: ProcessedPhoto interface: width/height are ORIGINAL pre-resize dimensions feeding PhotoEntry for Phase 4 layout
 - [Phase 02-image-processing-pipeline]: Wave 0 RED tests committed before implementation — 3 fail (no impl), 1 passes (static EXIF-strip proof)
+- [Phase 02-image-processing-pipeline]: Worker re-implements HEIC detection inline to avoid Worker import boundary complexity
+- [Phase 02-image-processing-pipeline]: mimeType read from blob.type after convertToBlob — Safari returns image/png silently; viewer handles both
 
 ### Pending Todos
 
@@ -88,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T15:38:20.906Z
-Stopped at: Completed 02-01-PLAN.md — dependencies installed, types defined, Wave 0 scaffolds written
+Last session: 2026-03-19T15:43:12.851Z
+Stopped at: Completed 02-02-PLAN.md — heic-detect, dimensions, and image-processor worker implemented; all tests GREEN
 Resume file: None
