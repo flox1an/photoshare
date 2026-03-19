@@ -7,9 +7,11 @@ import { traverseEntry } from '@/lib/image/folder-traverse';
 interface DropZoneProps {
   onFiles: (files: File[]) => void;
   isProcessing: boolean;
+  /** Prevent new drops during upload phase — shows opacity-50 and blocks interaction */
+  disabled?: boolean;
 }
 
-export function DropZone({ onFiles, isProcessing }: DropZoneProps) {
+export function DropZone({ onFiles, isProcessing, disabled = false }: DropZoneProps) {
   // react-dropzone handles file picker (click) and basic drag-drop for individual files
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     noClick: false,
@@ -84,6 +86,7 @@ export function DropZone({ onFiles, isProcessing }: DropZoneProps) {
           ? 'border-blue-500 bg-blue-50 text-blue-700'
           : 'border-gray-300 bg-gray-50 text-gray-500 hover:border-gray-400',
         isProcessing ? 'opacity-75 pointer-events-none' : '',
+        disabled ? 'opacity-50 pointer-events-none' : '',
       ]
         .filter(Boolean)
         .join(' ')}
