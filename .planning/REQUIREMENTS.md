@@ -28,14 +28,14 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Upload & Publishing
 
-- [ ] **UPLD-01**: Encrypted blobs are uploaded to a Blossom server with proper auth headers
-- [ ] **UPLD-02**: SHA-256 hash of each upload is verified against server response
-- [ ] **UPLD-03**: Blossom expiration header is sent requesting ~60-day retention
-- [ ] **UPLD-04**: An ephemeral Nostr keypair is generated (no login required)
-- [ ] **UPLD-05**: Encrypted album manifest is published as Nostr kind 30078 event
-- [ ] **UPLD-06**: NIP-40 expiration tag is set on the Nostr event (~30 days)
-- [ ] **UPLD-07**: Upload progress UI shows per-photo status (processing, uploading, done)
-- [ ] **UPLD-08**: Share link is generated only after all uploads succeed and relay confirms
+- [x] **UPLD-01**: Encrypted blobs are uploaded to a Blossom server with proper auth headers
+- [x] **UPLD-02**: SHA-256 hash of each upload is verified against server response
+- [x] **UPLD-03**: Blossom expiration header is sent requesting ~60-day retention
+- [x] **UPLD-04**: An ephemeral Nostr keypair is generated (no login required)
+- [x] **UPLD-05**: Encrypted album manifest is published as Nostr kind 30078 event
+- [x] **UPLD-06**: NIP-40 expiration tag is set on the Nostr event (~30 days)
+- [x] **UPLD-07**: Upload progress UI shows per-photo status (processing, uploading, done)
+- [x] **UPLD-08**: Share link is generated only after all uploads succeed and relay confirms
 
 ### Viewer
 
@@ -49,8 +49,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Settings
 
-- [ ] **CONF-01**: User can configure Nostr relay list via settings panel
-- [ ] **CONF-02**: User can configure Blossom server(s) via settings panel
+- [x] **CONF-01**: User can configure Nostr relay list via settings panel
+- [x] **CONF-02**: User can configure Blossom server(s) via settings panel
 - [ ] **CONF-03**: Relay hints are encoded in the share link so viewer knows where to fetch
 - [x] **CONF-04**: Sensible defaults (24242.io for Blossom, relay.nostu.be for dev relay)
 
@@ -101,14 +101,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CRYPT-02 | Phase 1 | Complete |
 | CRYPT-03 | Phase 1 | Complete |
 | CRYPT-04 | Phase 1 | Complete |
-| UPLD-01 | Phase 3 | Pending |
-| UPLD-02 | Phase 3 | Pending |
-| UPLD-03 | Phase 3 | Pending |
-| UPLD-04 | Phase 1 | Pending |
-| UPLD-05 | Phase 3 | Pending |
-| UPLD-06 | Phase 3 | Pending |
-| UPLD-07 | Phase 3 | Pending |
-| UPLD-08 | Phase 3 | Pending |
+| UPLD-01 | Phase 3 | Complete |
+| UPLD-02 | Phase 3 | Complete |
+| UPLD-03 | Phase 3 | Complete |
+| UPLD-04 | Phase 1 | Complete |
+| UPLD-05 | Phase 3 | Complete |
+| UPLD-06 | Phase 3 | Complete |
+| UPLD-07 | Phase 3 | Complete |
+| UPLD-08 | Phase 3 | Complete |
 | VIEW-01 | Phase 4 | Pending |
 | VIEW-02 | Phase 4 | Pending |
 | VIEW-03 | Phase 4 | Pending |
@@ -116,8 +116,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VIEW-05 | Phase 4 | Pending |
 | VIEW-06 | Phase 4 | Pending |
 | VIEW-07 | Phase 4 | Pending |
-| CONF-01 | Phase 3 | Pending |
-| CONF-02 | Phase 3 | Pending |
+| CONF-01 | Phase 3 | Complete |
+| CONF-02 | Phase 3 | Complete |
 | CONF-03 | Phase 4 | Pending |
 | CONF-04 | Phase 1 | Complete |
 

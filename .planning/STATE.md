@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 02-05-PLAN.md — Upload UI with DropZone, ProgressList, and UploadPanel; browser verification approved
-last_updated: "2026-03-19T16:05:37.027Z"
+stopped_at: Completed 03-01-PLAN.md — Wave 0 RED test scaffolds for all Phase 3 modules
+last_updated: "2026-03-19T16:36:36.514Z"
 last_activity: 2026-03-19 — Roadmap created
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 14
+  completed_plans: 9
   percent: 0
 ---
 
@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02-image-processing-pipeline P02 | 3 | 2 tasks | 3 files |
 | Phase 02-image-processing-pipeline P04 | 1 | 2 tasks | 2 files |
 | Phase 02-image-processing-pipeline P05 | 45 | 3 tasks | 3 files |
+| Phase 03-upload-and-publishing P01 | 570 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,8 @@ Recent decisions affecting current work:
 - [Phase 02-image-processing-pipeline]: useImageProcessor creates worker in useEffect for SSR safety; p-limit(4) gates 144 MB peak GPU memory ceiling; addPhotos accumulates across drops
 - [Phase 02-image-processing-pipeline]: Native onDrop intercepts folder drops using webkitGetAsEntry; react-dropzone handles file picker and individual file drops
 - [Phase 02-image-processing-pipeline]: Files streamed into store in chunks during native drop handling to prevent UI lag on large batches
+- [Phase 03-upload-and-publishing]: uploadBlob test signature includes localHashHex param to enable hash mismatch verification (UPLD-02 requirement)
+- [Phase 03-upload-and-publishing]: uploadStore uses addPhoto(id, filename) API — per-photo granularity vs processingStore batch pattern
 
 ### Pending Todos
 
@@ -97,6 +100,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T16:01:05.549Z
-Stopped at: Completed 02-05-PLAN.md — Upload UI with DropZone, ProgressList, and UploadPanel; browser verification approved
+Last session: 2026-03-19T16:36:36.512Z
+Stopped at: Completed 03-01-PLAN.md — Wave 0 RED test scaffolds for all Phase 3 modules
 Resume file: None
