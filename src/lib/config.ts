@@ -12,7 +12,7 @@ export const DEFAULT_RELAYS: string[] = [
  * Used for uploading full-size images and thumbnails in default configuration.
  * Can be overridden via settings panel (Phase 3, CONF-02).
  */
-export const DEFAULT_BLOSSOM_SERVER = "https://24242.io";
+export const DEFAULT_BLOSSOM_SERVER = "https://tempstore.apps3.slidestr.net";
 
 /**
  * Nostr event expiration offset in seconds.
