@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: "Checkpoint: 03-06 Task 3 human-verify — awaiting browser verification of upload flow"
-last_updated: "2026-03-19T17:11:34.389Z"
+stopped_at: Completed 03-upload-and-publishing-06-PLAN.md — Phase 3 complete, human verification approved
+last_updated: "2026-03-19T17:29:59.085Z"
 last_activity: 2026-03-19 — Roadmap created
 progress:
   total_phases: 4
@@ -63,6 +63,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03-upload-and-publishing P02 | 3 | 2 tasks | 4 files |
 | Phase 03-upload-and-publishing P04 | 613 | 1 tasks | 4 files |
 | Phase 03-upload-and-publishing P05 | 323 | 2 tasks | 3 files |
+| Phase 03-upload-and-publishing P06 | 45 | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,9 @@ Recent decisions affecting current work:
 - [Phase 03-upload-and-publishing]: vitest.config.ts execArgv --no-experimental-webstorage required for Node.js 25 — disables built-in Web Storage that overrides jsdom localStorage
 - [Phase 03-upload-and-publishing]: ProgressList merges processingStore + uploadStore: if uploadPhotos[photo.id] exists, use upload status for display
 - [Phase 03-upload-and-publishing]: ShareCard returns null when !isUploading && !shareLink && !publishError to avoid empty card on page load
+- [Phase 03-upload-and-publishing]: SettingsPanel saves Blossom server on blur/Enter (not only explicit Save) for immediate UX feedback
+- [Phase 03-upload-and-publishing]: Blossom validation uses GET not HEAD — some servers reject HEAD; browser enforces CORS on actual requests
+- [Phase 03-upload-and-publishing]: Default Blossom server changed to tempstore.apps3.slidestr.net — empirically verified CORS support during browser testing
 
 ### Pending Todos
 
@@ -114,6 +118,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T17:11:29.128Z
-Stopped at: Checkpoint: 03-06 Task 3 human-verify — awaiting browser verification of upload flow
+Last session: 2026-03-19T17:29:59.083Z
+Stopped at: Completed 03-upload-and-publishing-06-PLAN.md — Phase 3 complete, human verification approved
 Resume file: None

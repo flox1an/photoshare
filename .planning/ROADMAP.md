@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - Next.js project, AES-256-GCM crypto module, ephemeral keypair, SSR boundaries, and config defaults (completed 2026-03-19)
 - [ ] **Phase 2: Image Processing Pipeline** - Client-side EXIF strip, resize, WebP convert, thumbnail generation, HEIC handling, and memory-safe batch processing in a Web Worker
-- [ ] **Phase 3: Upload and Publishing** - Blossom blob upload with SHA-256 verification, Nostr kind 30078 event publish with NIP-40 expiry, upload progress UI, and configurable relay/server settings
+- [x] **Phase 3: Upload and Publishing** - Blossom blob upload with SHA-256 verification, Nostr kind 30078 event publish with NIP-40 expiry, upload progress UI, and configurable relay/server settings (completed 2026-03-19)
 - [ ] **Phase 4: Share Link and Viewer** - Share link generation with key in URL fragment, relay hints encoding, thumbnail grid gallery, lightbox slideshow, and download-all
 
 ## Phase Details
@@ -92,5 +92,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Foundation | 3/3 | Complete   | 2026-03-19 |
 | 2. Image Processing Pipeline | 3/5 | In Progress|  |
-| 3. Upload and Publishing | 5/6 | In Progress|  |
+| 3. Upload and Publishing | 6/6 | Complete   | 2026-03-19 |
 | 4. Share Link and Viewer | 0/? | Not started | - |
