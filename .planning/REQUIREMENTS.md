@@ -21,10 +21,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Encryption
 
-- [ ] **CRYPT-01**: All image blobs (full + thumbnail) are encrypted with AES-256-GCM client-side
-- [ ] **CRYPT-02**: A fresh random IV is generated per encrypt operation (never reused)
-- [ ] **CRYPT-03**: A single random symmetric key is generated per album
-- [ ] **CRYPT-04**: The decryption key is embedded in the share link URL #fragment (never sent to server)
+- [x] **CRYPT-01**: All image blobs (full + thumbnail) are encrypted with AES-256-GCM client-side
+- [x] **CRYPT-02**: A fresh random IV is generated per encrypt operation (never reused)
+- [x] **CRYPT-03**: A single random symmetric key is generated per album
+- [x] **CRYPT-04**: The decryption key is embedded in the share link URL #fragment (never sent to server)
 
 ### Upload & Publishing
 
@@ -52,7 +52,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **CONF-01**: User can configure Nostr relay list via settings panel
 - [ ] **CONF-02**: User can configure Blossom server(s) via settings panel
 - [ ] **CONF-03**: Relay hints are encoded in the share link so viewer knows where to fetch
-- [ ] **CONF-04**: Sensible defaults (24242.io for Blossom, relay.nostu.be for dev relay)
+- [x] **CONF-04**: Sensible defaults (24242.io for Blossom, relay.nostu.be for dev relay)
 
 ## v2 Requirements
 
@@ -97,10 +97,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROC-07 | Phase 2 | Pending |
 | PROC-08 | Phase 2 | Pending |
 | PROC-09 | Phase 2 | Pending |
-| CRYPT-01 | Phase 1 | Pending |
-| CRYPT-02 | Phase 1 | Pending |
-| CRYPT-03 | Phase 1 | Pending |
-| CRYPT-04 | Phase 1 | Pending |
+| CRYPT-01 | Phase 1 | Complete |
+| CRYPT-02 | Phase 1 | Complete |
+| CRYPT-03 | Phase 1 | Complete |
+| CRYPT-04 | Phase 1 | Complete |
 | UPLD-01 | Phase 3 | Pending |
 | UPLD-02 | Phase 3 | Pending |
 | UPLD-03 | Phase 3 | Pending |
@@ -119,7 +119,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CONF-01 | Phase 3 | Pending |
 | CONF-02 | Phase 3 | Pending |
 | CONF-03 | Phase 4 | Pending |
-| CONF-04 | Phase 1 | Pending |
+| CONF-04 | Phase 1 | Complete |
 
 **Coverage:**
 - v1 requirements: 32 total
