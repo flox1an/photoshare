@@ -43,12 +43,20 @@ Next.js project scaffolding, AES-256-GCM crypto module, ephemeral Nostr keypair 
 - Thumbnails are separate encrypted Blossom blobs (not base64 embedded)
 - Blossom server URL NOT in manifest — viewer discovers from naddr relay hints or uses default
 
+### Nostr Library
+- Use **applesauce** ecosystem (by hzrd149/noStrudel author) instead of raw nostr-tools
+- `applesauce-signers` → `SimpleSigner` for ephemeral keypair generation
+- `applesauce-factory` → `EventFactory` + `build()` for creating kind 30078 events
+- `applesauce-relay` → `RelayPool` for publishing to relays
+- `applesauce-core` → `EventStore` for event management
+- `applesauce-loaders` → `createAddressLoader` for viewer (Phase 4)
+- `nostr-tools` still used for `nip19.naddrEncode()` (applesauce uses nostr-tools types)
+
 ### Claude's Discretion
 - Next.js project structure and folder layout
 - TypeScript types/interfaces for the manifest schema
 - SSR boundary implementation (dynamic imports vs useEffect guards)
 - Config module design (lib/config.ts vs environment variables)
-- nostr-tools API usage for keypair generation
 
 </decisions>
 

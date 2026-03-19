@@ -58,7 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- [Pre-phase]: nostr-tools over NDK — minimal API, ephemeral keypair only, smaller bundle
+- [Pre-phase]: applesauce ecosystem over raw nostr-tools — higher-level API by hzrd149 (noStrudel author)
 - [Pre-phase]: blossom-client-sdk 4.1.0 for Blossom upload/auth — written by spec author
 - [Pre-phase]: Web Crypto API (native) for AES-256-GCM — no third-party crypto library
 - [Pre-phase]: Comlink + browser-image-compression for Web Worker pipeline

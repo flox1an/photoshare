@@ -23,7 +23,7 @@
 - Album-level metadata: `title` (optional), `createdAt` (ISO 8601)
 - Thumbnails are separate encrypted Blossom blobs (not base64 embedded)
 - Blossom server URL NOT in manifest — viewer discovers from naddr relay hints or uses default
-- nostr-tools (not NDK) — minimal API, ephemeral keypair only, smaller bundle
+- applesauce (not nostr-tools directly or NDK) — higher-level Nostr library by hzrd149 (noStrudel author), uses nostr-tools types under the hood
 - blossom-client-sdk 4.1.0 for Blossom upload/auth
 - Web Crypto API (native) for AES-256-GCM — no third-party crypto library
 - Default Blossom server: 24242.io; default relay: relay.nostu.be
@@ -74,7 +74,12 @@ The nostr-tools v2.23.3 API is stable and verified from source: `generateSecretK
 | React | 19.x (ships with Next 16) | UI | Required by Next.js 16 |
 | TypeScript | 5.x | Type safety | nostr-tools v2 uses `Uint8Array` keys — strict mode catches hex/bytes confusion early |
 | Web Crypto API | Browser built-in | AES-256-GCM encrypt/decrypt, random key/IV generation | No dependency; spec-correct; universally available in modern browsers |
-| nostr-tools | 2.23.3 | Keypair generation, event signing, NIP-19 naddr encoding, relay pool | Locked decision; minimal API surface for ephemeral key + single event use case |
+| applesauce-signers | latest | SimpleSigner for ephemeral keypair | Higher-level API; generates keypair with `new SimpleSigner()` |
+| applesauce-factory | latest | EventFactory for creating/signing kind 30078 events | `factory.build()` with operations for tags, content |
+| applesauce-relay | latest | RelayPool for publishing events | `relay.publish(event)` with promise-based API |
+| applesauce-core | latest | EventStore, core types | Foundation for event management |
+| applesauce-loaders | latest | createAddressLoader for viewer (Phase 4) | Fetch events by naddr address |
+| nostr-tools | 2.23.3 (peer dep) | NIP-19 naddr encoding, types | Used via applesauce; `nip19.naddrEncode()` still from nostr-tools |
 
 ### Supporting
 | Library | Version | Purpose | When to Use |
@@ -91,12 +96,13 @@ The nostr-tools v2.23.3 API is stable and verified from source: `generateSecretK
 ```bash
 npx create-next-app@latest photoshare --typescript --tailwind --app --turbopack
 cd photoshare
-npm install nostr-tools
+npm install applesauce-core applesauce-signers applesauce-factory applesauce-relay applesauce-loaders nostr-tools
 ```
 
 **Version verification (run before implementing):**
 ```bash
-npm view nostr-tools version          # 2.23.3 confirmed 2026-03-19
+npm view applesauce-core version
+npm view applesauce-signers version
 npm view next version                 # 16.2.0 confirmed 2026-03-19
 ```
 
@@ -211,31 +217,35 @@ export function base64urlToUint8Array(b64url: string): Uint8Array {
 }
 ```
 
-### Pattern 2: Ephemeral Nostr Keypair
+### Pattern 2: Ephemeral Nostr Keypair with applesauce SimpleSigner
 
-**What:** A `lib/nostr/keypair.ts` module that generates a fresh secp256k1 keypair per album upload session. The secret key is a `Uint8Array`; the public key is a hex string.
+**What:** A `lib/nostr/signer.ts` module that creates a `SimpleSigner` instance for ephemeral album upload sessions. SimpleSigner generates a fresh secp256k1 keypair internally and implements the Nip07Interface for event signing.
 
-**When to use:** Called once at the start of each upload session. Keys are held in memory only; discarded after event publishing.
+**When to use:** Called once at the start of each upload session. The signer is held in memory only; discarded after event publishing.
 
-**nostr-tools v2 API (verified from source):**
+**applesauce API (verified from Context7):**
 ```typescript
-// lib/nostr/keypair.ts
-// Source: https://raw.githubusercontent.com/nbd-wtf/nostr-tools/master/pure.ts
-import { generateSecretKey, getPublicKey } from "nostr-tools";
+// lib/nostr/signer.ts
+import { SimpleSigner } from "applesauce-signers";
 
-export interface EphemeralKeypair {
-  secretKey: Uint8Array;   // 32 bytes, never serialized/stored
-  publicKey: string;        // hex string
+/**
+ * Create an ephemeral signer for a single album upload session.
+ * SimpleSigner() generates a random keypair internally.
+ * The signer is never persisted — discarded after publishing.
+ */
+export function createEphemeralSigner(): SimpleSigner {
+  return new SimpleSigner(); // generates random key internally
 }
 
-export function generateEphemeralKeypair(): EphemeralKeypair {
-  const secretKey = generateSecretKey(); // returns Uint8Array(32)
-  const publicKey = getPublicKey(secretKey); // returns hex string
-  return { secretKey, publicKey };
+/**
+ * Get the public key from a signer (hex string).
+ */
+export async function getSignerPubkey(signer: SimpleSigner): Promise<string> {
+  return signer.getPublicKey();
 }
 ```
 
-**Critical:** Do NOT convert `secretKey` to hex for storage. Do NOT persist to localStorage or sessionStorage. `secretKey` is a `Uint8Array` throughout — nostr-tools v2 changed from hex strings to Uint8Array in v2.0.
+**Critical:** Do NOT persist the signer or extract the secret key. The signer lives in memory for one upload session only.
 
 ### Pattern 3: NIP-19 naddr Encoding
 
@@ -322,56 +332,47 @@ export function UploadPanel() {
 
 **NEVER call `crypto.subtle` or `crypto.getRandomValues` at module scope or in the render body of a client component — it runs during Next.js prerender on the server.**
 
-### Pattern 5: kind 30078 Event Structure (NIP-78)
+### Pattern 5: kind 30078 Event with applesauce EventFactory
 
 **What:** NIP-78 kind 30078 is an addressable event with free-form content. The content field holds the AES-256-GCM encrypted manifest JSON. The `d` tag is the unique album identifier.
 
-**Event shape:**
+**Event shape using applesauce (verified from Context7):**
 ```typescript
-// Source: NIP-78 spec + NIP-40 spec
-import { finalizeEvent } from "nostr-tools";
+import { EventFactory } from "applesauce-factory";
+import { setContent, includeSingletonTag } from "applesauce-factory/operations";
 
-const eventTemplate = {
-  kind: 30078,
-  content: encryptedManifestBase64, // base64-encoded AES-256-GCM ciphertext
-  created_at: Math.floor(Date.now() / 1000),
-  tags: [
-    ["d", albumIdentifier],          // Random UUID — publicly visible, no PII
-    ["expiration", String(Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60)], // NIP-40
-    ["alt", "Encrypted photo album"], // Human-readable fallback
-  ],
-};
+const factory = new EventFactory({ signer });
 
-const signedEvent = finalizeEvent(eventTemplate, secretKey); // secretKey: Uint8Array
+const event = await factory.build(
+  { kind: 30078 },
+  setContent(encryptedManifestBase64),
+  includeSingletonTag(["d", albumIdentifier]),
+  includeSingletonTag(["expiration", String(Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60)]),
+  includeSingletonTag(["alt", "Encrypted photo album"]),
+  includeSingletonTag(["iv", manifestIvBase64url]), // IV for decrypting the manifest content
+);
+
+const signed = await factory.sign(event);
 ```
 
 **Note on `content` encoding:** The AES-GCM output is an `ArrayBuffer`. Convert to base64 (standard, not base64url) for the JSON content field — base64url is used only for the IV values in the manifest entries and the key in the URL fragment, not the event content itself. Either encoding works; pick one and be consistent.
 
-### Pattern 6: SimplePool publish — Return Type Gotcha
+### Pattern 6: applesauce RelayPool publish
 
-**What:** `SimplePool.publish()` returns `Promise<string>[]` — an **array of promises**, not a single promise. Each promise resolves to a relay OK string or error string.
+**What:** applesauce `RelayPool` provides both observable and promise-based publish methods.
 
-**Critical:** Do NOT `await pool.publish(...)` directly — it returns an array. Use `Promise.allSettled`:
-
+**applesauce API (verified from Context7):**
 ```typescript
-// Source: abstract-pool.ts (verified)
-import { SimplePool } from "nostr-tools";
+import { RelayPool } from "applesauce-relay";
 
-const pool = new SimplePool();
+const pool = new RelayPool();
 
-// WRONG — publish() returns Promise<string>[], not Promise<string[]>
-// const result = await pool.publish(relays, event); // undefined behavior
-
-// CORRECT
-const promises = pool.publish(relays, event);
-const results = await Promise.allSettled(promises);
-
-for (const r of results) {
-  if (r.status === "rejected" || r.value.startsWith("error:")) {
-    // handle relay rejection
-  }
-}
+// Promise-based publish with automatic reconnection and retries
+const response = await relay.publish(signedEvent);
+console.log(`Published: ${response.ok}`, response.message);
 ```
+
+**Note:** applesauce relay publish returns a single promise (not an array like nostr-tools SimplePool). This is simpler but means you publish to one relay at a time. For publishing to multiple relays, iterate and collect responses.
 
 ### Pattern 7: Default Configuration Module
 
@@ -452,13 +453,13 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 
 | Problem | Don't Build | Use Instead | Why |
 |---------|-------------|-------------|-----|
-| Nostr event signing | Custom secp256k1 Schnorr | `finalizeEvent(template, secretKey)` from nostr-tools | Handles id computation, Schnorr signing, and VerifiedEvent tagging correctly |
+| Nostr event signing | Custom secp256k1 Schnorr | `factory.sign(event)` from applesauce-factory | EventFactory handles id computation, Schnorr signing via SimpleSigner |
 | NIP-19 bech32 encoding | Custom bech32 encoder | `nip19.naddrEncode({ identifier, pubkey, kind, relays })` | TLV encoding for naddr has specific byte layout requirements for relay list |
 | AES-GCM key/IV generation | Custom PRNG | `crypto.subtle.generateKey()` + `crypto.getRandomValues()` | CSPRNG — no third-party library needed |
 | base64url encoding for small values | External library | `btoa().replace(...)` pattern in Pattern 1 | Standard for key material (~43 chars); use chunked approach for large buffers |
 | NIP-40 timestamp calculation | Custom date math | `Math.floor(Date.now() / 1000) + seconds` | Simple Unix timestamp arithmetic |
 
-**Key insight:** nostr-tools v2 has the exact API surface this phase needs — `generateSecretKey`, `getPublicKey`, `finalizeEvent`, `nip19.naddrEncode`. No other Nostr library is required.
+**Key insight:** applesauce provides the higher-level API surface this phase needs — `SimpleSigner` for keypair, `EventFactory.build()` + `factory.sign()` for events, `RelayPool.publish()` for relay interaction. `nip19.naddrEncode()` from nostr-tools is still used for NIP-19 encoding (applesauce uses nostr-tools types under the hood).
 
 ---
 
@@ -563,13 +564,13 @@ const key = await crypto.subtle.importKey(
 );
 ```
 
-### Generate Ephemeral Keypair
+### Generate Ephemeral Signer
 ```typescript
-// Source: nostr-tools/pure.ts (verified from GitHub)
-import { generateSecretKey, getPublicKey } from "nostr-tools";
+// Source: applesauce-signers (verified from Context7)
+import { SimpleSigner } from "applesauce-signers";
 
-const secretKey = generateSecretKey(); // Uint8Array(32)
-const publicKey = getPublicKey(secretKey); // hex string
+const signer = new SimpleSigner(); // generates random keypair
+const pubkey = await signer.getPublicKey(); // hex string
 ```
 
 ### Encode naddr for Share URL
@@ -586,25 +587,22 @@ const naddr = nip19.naddrEncode({
 // Result: "naddr1..." bech32 string
 ```
 
-### Build and Sign kind 30078 Event
+### Build and Sign kind 30078 Event with applesauce
 ```typescript
-// Source: nostr-tools/pure.ts + NIP-78 spec
-import { finalizeEvent } from "nostr-tools";
+// Source: applesauce-factory (verified from Context7)
+import { EventFactory } from "applesauce-factory";
+import { setContent, includeSingletonTag } from "applesauce-factory/operations";
 
-const event = finalizeEvent(
-  {
-    kind: 30078,
-    content: encryptedManifestBase64,
-    created_at: Math.floor(Date.now() / 1000),
-    tags: [
-      ["d", albumId],
-      ["expiration", String(Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60)],
-      ["alt", "Encrypted photo album"],
-    ],
-  },
-  secretKey, // Uint8Array — NOT hex
+const factory = new EventFactory({ signer });
+
+const event = await factory.build(
+  { kind: 30078 },
+  setContent(encryptedManifestBase64),
+  includeSingletonTag(["d", albumId]),
+  includeSingletonTag(["expiration", String(Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60)]),
+  includeSingletonTag(["alt", "Encrypted photo album"]),
 );
-// Returns VerifiedEvent with id, sig, pubkey set
+const signed = await factory.sign(event);
 ```
 
 ---
