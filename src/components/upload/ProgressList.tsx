@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useProcessingStore } from '@/store/processingStore';
 import { useUploadStore } from '@/store/uploadStore';
 import type { PhotoProcessingStatus } from '@/types/processing';
@@ -38,6 +39,8 @@ export function ProgressList() {
               filename={photo.filename}
               status={displayStatus}
               error={displayError}
+              thumbData={photo.result?.thumb}
+              mimeType={photo.result?.mimeType}
             />
           );
         })}
@@ -50,12 +53,32 @@ interface PhotoRowProps {
   filename: string;
   status: PhotoProcessingStatus;
   error?: string;
+  thumbData?: ArrayBuffer;
+  mimeType?: string;
 }
 
-function PhotoRow({ filename, status, error }: PhotoRowProps) {
+function PhotoRow({ filename, status, error, thumbData, mimeType }: PhotoRowProps) {
+  const [thumbUrl, setThumbUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!thumbData) return;
+    const blob = new Blob([thumbData], { type: mimeType ?? 'image/webp' });
+    const url = URL.createObjectURL(blob);
+    setThumbUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [thumbData, mimeType]);
+
   return (
     <li className="flex items-center gap-3 px-4 py-2.5 text-sm">
-      <StatusDot status={status} />
+      {thumbUrl ? (
+        <img
+          src={thumbUrl}
+          alt=""
+          className="h-8 w-8 shrink-0 rounded object-cover"
+        />
+      ) : (
+        <StatusDot status={status} />
+      )}
       <span className="flex-1 truncate text-zinc-300 font-mono text-xs">{filename}</span>
       <span className="shrink-0 text-[10px] uppercase tracking-wider text-zinc-600">{status}</span>
       {error && (
