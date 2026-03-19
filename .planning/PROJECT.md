@@ -48,10 +48,13 @@ Anyone can securely share a batch of photos via a single link — no accounts, n
 
 - **Nostr** is a decentralized protocol for social data. Events are signed JSON objects published to relays. NIP-40 defines expiration tags that compliant relays honor.
 - **Blossom** (BLOb Storage Simply Made) is a Nostr-adjacent protocol for hosting binary blobs (images, files) on servers, addressed by SHA-256 hash. Servers can accept expiration hints.
+- **Default Blossom server:** `https://24242.io/` — 60-day retention by default, good fit for ephemeral sharing.
+- **Dev relay:** `wss://relay.nostu.be`
 - Kind 30078 is a parameterized replaceable event — good for app-specific structured data. The `d` tag acts as an identifier.
 - The URL fragment (#) is never sent to the server, making it safe for embedding decryption keys.
 - Client-side WebP conversion and resizing can be done via Canvas API; EXIF stripping via parsing the JPEG binary structure or libraries like `exifr`.
 - For ~200 photos, chunked/batched processing with a progress UI is essential to avoid browser freezes. Web Workers are a good fit.
+- **NIP-40 expiration is advisory** — relays SHOULD honor it but MAY persist events. Privacy relies on encryption, not deletion.
 
 ## Constraints
 
@@ -59,7 +62,7 @@ Anyone can securely share a batch of photos via a single link — no accounts, n
 - **Tech stack**: Next.js (App Router)
 - **Processing**: All image processing client-side (Canvas API, Web Workers)
 - **Encryption**: AES-256-GCM, single symmetric key derived from random secret
-- **Expiration**: 1-month TTL on both Nostr events and Blossom blobs
+- **Expiration**: ~60-day TTL on Blossom blobs (24242.io default), 1-month on Nostr events
 - **Album size**: Support up to ~200 photos per album
 
 ## Key Decisions
