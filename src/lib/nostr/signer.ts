@@ -9,7 +9,7 @@ import { SimpleSigner } from "applesauce-signers";
  * CRITICAL: Never call localStorage.setItem or sessionStorage.setItem with the
  * signer instance or any extracted key material.
  */
-export function createEphemeralSigner(): SimpleSigner {
+export function createEphemeralSigner(): InstanceType<typeof SimpleSigner> {
   return new SimpleSigner();
 }
 
@@ -17,6 +17,6 @@ export function createEphemeralSigner(): SimpleSigner {
  * Get the hex public key from a SimpleSigner.
  * Returns a 64-character lowercase hex string (32 bytes = 256 bits).
  */
-export async function getSignerPubkey(signer: SimpleSigner): Promise<string> {
+export async function getSignerPubkey(signer: InstanceType<typeof SimpleSigner>): Promise<string> {
   return signer.getPublicKey();
 }
