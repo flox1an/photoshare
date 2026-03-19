@@ -88,44 +88,44 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PROC-01 | — | Pending |
-| PROC-02 | — | Pending |
-| PROC-03 | — | Pending |
-| PROC-04 | — | Pending |
-| PROC-05 | — | Pending |
-| PROC-06 | — | Pending |
-| PROC-07 | — | Pending |
-| PROC-08 | — | Pending |
-| PROC-09 | — | Pending |
-| CRYPT-01 | — | Pending |
-| CRYPT-02 | — | Pending |
-| CRYPT-03 | — | Pending |
-| CRYPT-04 | — | Pending |
-| UPLD-01 | — | Pending |
-| UPLD-02 | — | Pending |
-| UPLD-03 | — | Pending |
-| UPLD-04 | — | Pending |
-| UPLD-05 | — | Pending |
-| UPLD-06 | — | Pending |
-| UPLD-07 | — | Pending |
-| UPLD-08 | — | Pending |
-| VIEW-01 | — | Pending |
-| VIEW-02 | — | Pending |
-| VIEW-03 | — | Pending |
-| VIEW-04 | — | Pending |
-| VIEW-05 | — | Pending |
-| VIEW-06 | — | Pending |
-| VIEW-07 | — | Pending |
-| CONF-01 | — | Pending |
-| CONF-02 | — | Pending |
-| CONF-03 | — | Pending |
-| CONF-04 | — | Pending |
+| PROC-01 | Phase 2 | Pending |
+| PROC-02 | Phase 2 | Pending |
+| PROC-03 | Phase 2 | Pending |
+| PROC-04 | Phase 2 | Pending |
+| PROC-05 | Phase 2 | Pending |
+| PROC-06 | Phase 2 | Pending |
+| PROC-07 | Phase 2 | Pending |
+| PROC-08 | Phase 2 | Pending |
+| PROC-09 | Phase 2 | Pending |
+| CRYPT-01 | Phase 1 | Pending |
+| CRYPT-02 | Phase 1 | Pending |
+| CRYPT-03 | Phase 1 | Pending |
+| CRYPT-04 | Phase 1 | Pending |
+| UPLD-01 | Phase 3 | Pending |
+| UPLD-02 | Phase 3 | Pending |
+| UPLD-03 | Phase 3 | Pending |
+| UPLD-04 | Phase 1 | Pending |
+| UPLD-05 | Phase 3 | Pending |
+| UPLD-06 | Phase 3 | Pending |
+| UPLD-07 | Phase 3 | Pending |
+| UPLD-08 | Phase 3 | Pending |
+| VIEW-01 | Phase 4 | Pending |
+| VIEW-02 | Phase 4 | Pending |
+| VIEW-03 | Phase 4 | Pending |
+| VIEW-04 | Phase 4 | Pending |
+| VIEW-05 | Phase 4 | Pending |
+| VIEW-06 | Phase 4 | Pending |
+| VIEW-07 | Phase 4 | Pending |
+| CONF-01 | Phase 3 | Pending |
+| CONF-02 | Phase 3 | Pending |
+| CONF-03 | Phase 4 | Pending |
+| CONF-04 | Phase 1 | Pending |
 
 **Coverage:**
 - v1 requirements: 32 total
-- Mapped to phases: 0
-- Unmapped: 32 ⚠️
+- Mapped to phases: 32
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-19*
-*Last updated: 2026-03-19 after initial definition*
+*Last updated: 2026-03-19 after roadmap creation*
