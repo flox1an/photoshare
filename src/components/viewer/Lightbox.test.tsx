@@ -44,6 +44,7 @@ const defaultProps = {
   onNext: vi.fn(),
   onPrev: vi.fn(),
   onClose: vi.fn(),
+  onDownload: vi.fn(),
 };
 
 describe("Lightbox", () => {

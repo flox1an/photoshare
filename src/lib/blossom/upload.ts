@@ -47,12 +47,14 @@ export async function buildBlossomUploadAuth(
   signer: InstanceType<typeof PrivateKeySigner>,
   blobHashHex: string,
 ): Promise<string> {
-  const expirationTimestamp = Math.floor(Date.now() / 1000) + 3600; // 1 hour TTL
+  const nowSec = Math.floor(Date.now() / 1000) - 5; // subtract 5s to avoid clock-skew "created_at in the future" errors
+  const expirationTimestamp = nowSec + 3600; // 1 hour TTL
 
   const template = await build(
     {
       kind: 24242,
       content: "Upload blob",
+      created_at: nowSec,
       tags: [
         ["t", "upload"],
         ["x", blobHashHex],

@@ -124,3 +124,14 @@ None — no external service configuration required.
 ---
 *Phase: 04-share-link-and-viewer*
 *Completed: 2026-03-19*
+
+## Self-Check: PASSED
+
+- FOUND: src/lib/nostr/viewer.test.ts
+- FOUND: src/lib/blossom/fetch.test.ts
+- FOUND: src/components/viewer/ThumbnailGrid.test.tsx
+- FOUND: src/components/viewer/Lightbox.test.tsx
+- FOUND: src/hooks/useAlbumViewer.test.ts
+- FOUND: .planning/phases/04-share-link-and-viewer/04-01-SUMMARY.md
+- Commit 64724cd verified (Task 1 — viewer logic tests)
+- Commit c70a966 verified (Task 2 — UI + hook tests)

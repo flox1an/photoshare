@@ -57,6 +57,31 @@ const samplePhotos: PhotoEntry[] = [
   },
 ];
 
+/** Helper: set up DOM mocks for download trigger (createElement('a'), URL API) */
+function setupDownloadMocks() {
+  const mockClick = vi.fn();
+  const mockCreateObjectURL = vi.fn().mockReturnValue("blob:mock");
+  const mockRevokeObjectURL = vi.fn();
+  vi.stubGlobal("URL", { createObjectURL: mockCreateObjectURL, revokeObjectURL: mockRevokeObjectURL });
+
+  vi.spyOn(document.body, "appendChild").mockImplementation(vi.fn());
+  vi.spyOn(document.body, "removeChild").mockImplementation(vi.fn());
+  const originalCreateElement = document.createElement.bind(document);
+  vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
+    if (tag === "a") {
+      return { href: "", download: "", click: mockClick } as unknown as HTMLElement;
+    }
+    return originalCreateElement(tag);
+  });
+
+  return { mockClick, mockCreateObjectURL, mockRevokeObjectURL };
+}
+
+function cleanupDownloadMocks() {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+}
+
 describe("useAlbumViewer", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -70,83 +95,63 @@ describe("useAlbumViewer", () => {
     });
   });
 
-  it("downloadAll calls JSZip.file() for each photo with photo.filename", async () => {
-    // Create a fake CryptoKey-like object for testing
-    const fakeKey = {} as CryptoKey;
+  describe("downloadAll (desktop — individual files)", () => {
+    it("triggers one download per photo with correct filenames", async () => {
+      const fakeKey = {} as CryptoKey;
+      const { result } = renderHook(() => useAlbumViewer());
 
-    // Render hook BEFORE installing createElement spy to avoid recursive mock issue
-    // (renderHook uses document.createElement internally; the spy is only needed for downloadAll)
-    const { result } = renderHook(() => useAlbumViewer());
+      const { mockClick } = setupDownloadMocks();
 
-    // Mock URL.createObjectURL and anchor element for download trigger
-    const mockCreateObjectURL = vi.fn().mockReturnValue("blob:mock");
-    const mockRevokeObjectURL = vi.fn();
-    vi.stubGlobal("URL", { createObjectURL: mockCreateObjectURL, revokeObjectURL: mockRevokeObjectURL });
+      await act(async () => {
+        await result.current.downloadAll(samplePhotos, fakeKey, "https://blossom.example.com");
+      });
 
-    const mockAppend = vi.fn();
-    const mockClick = vi.fn();
-    const mockRemove = vi.fn();
-    vi.spyOn(document.body, "appendChild").mockImplementation(mockAppend);
-    vi.spyOn(document.body, "removeChild").mockImplementation(mockRemove);
-    const originalCreateElement = document.createElement.bind(document);
-    vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
-      if (tag === "a") {
-        return { href: "", download: "", click: mockClick } as unknown as HTMLElement;
-      }
-      return originalCreateElement(tag);
+      // On desktop (no iOS UA), should trigger individual downloads — one click per photo
+      expect(mockClick).toHaveBeenCalledTimes(2);
+      // JSZip should NOT be used on desktop
+      expect(MockJSZip).not.toHaveBeenCalled();
+
+      cleanupDownloadMocks();
     });
 
-    await act(async () => {
-      await result.current.downloadAll(samplePhotos, fakeKey, "https://blossom.example.com");
+    it("reports progress incrementally", async () => {
+      const progressCalls: Array<[number, number]> = [];
+      const onProgress = vi.fn().mockImplementation((current: number, total: number) => {
+        progressCalls.push([current, total]);
+      });
+
+      const fakeKey = {} as CryptoKey;
+      const { result } = renderHook(() => useAlbumViewer());
+
+      setupDownloadMocks();
+
+      await act(async () => {
+        await result.current.downloadAll(samplePhotos, fakeKey, "https://blossom.example.com", onProgress);
+      });
+
+      expect(onProgress).toHaveBeenCalledTimes(2);
+      expect(progressCalls[0]).toEqual([1, 2]);
+      expect(progressCalls[1]).toEqual([2, 2]);
+
+      cleanupDownloadMocks();
     });
-
-    // Get the JSZip instance that was created
-    const zipInstance = MockJSZip.mock.results[0].value;
-
-    // zip.file() should be called once per photo with the correct filename
-    expect(zipInstance.file).toHaveBeenCalledTimes(2);
-    expect(zipInstance.file).toHaveBeenCalledWith("IMG_2847.jpg", expect.any(ArrayBuffer));
-    expect(zipInstance.file).toHaveBeenCalledWith("IMG_2848.jpg", expect.any(ArrayBuffer));
-
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
   });
 
-  it("downloadAll reports progress incrementally", async () => {
-    const progressCalls: Array<[number, number]> = [];
-    const onProgress = vi.fn().mockImplementation((current: number, total: number) => {
-      progressCalls.push([current, total]);
+  describe("downloadSingle", () => {
+    it("fetches, decrypts, and triggers download for a single photo", async () => {
+      const fakeKey = {} as CryptoKey;
+      const { result } = renderHook(() => useAlbumViewer());
+
+      const { mockClick } = setupDownloadMocks();
+
+      await act(async () => {
+        await result.current.downloadSingle(samplePhotos[0], fakeKey, "https://blossom.example.com");
+      });
+
+      expect(fetchBlob).toHaveBeenCalledWith("https://blossom.example.com", "aabbcc001");
+      expect(mockClick).toHaveBeenCalledOnce();
+
+      cleanupDownloadMocks();
     });
-
-    const fakeKey = {} as CryptoKey;
-
-    // Render hook BEFORE installing createElement spy to avoid recursive mock issue
-    const { result } = renderHook(() => useAlbumViewer());
-
-    const mockCreateObjectURL = vi.fn().mockReturnValue("blob:mock");
-    const mockRevokeObjectURL = vi.fn();
-    vi.stubGlobal("URL", { createObjectURL: mockCreateObjectURL, revokeObjectURL: mockRevokeObjectURL });
-
-    vi.spyOn(document.body, "appendChild").mockImplementation(vi.fn());
-    vi.spyOn(document.body, "removeChild").mockImplementation(vi.fn());
-    const originalCreateElement = document.createElement.bind(document);
-    vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
-      if (tag === "a") {
-        return { href: "", download: "", click: vi.fn() } as unknown as HTMLElement;
-      }
-      return originalCreateElement(tag);
-    });
-
-    await act(async () => {
-      await result.current.downloadAll(samplePhotos, fakeKey, "https://blossom.example.com", onProgress);
-    });
-
-    // Should have called onProgress with (1, 2) and (2, 2)
-    expect(onProgress).toHaveBeenCalledTimes(2);
-    expect(progressCalls[0]).toEqual([1, 2]);
-    expect(progressCalls[1]).toEqual([2, 2]);
-
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
   });
 });

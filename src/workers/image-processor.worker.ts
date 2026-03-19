@@ -75,7 +75,7 @@ const api: ProcessorApi = {
       thumb: thumbBuffer,
       width: origW,   // ORIGINAL dimensions — Phase 4 uses for aspect ratio grid layout
       height: origH,
-      filename: file.name,
+      filename: file.name.replace(/\.[^.]+$/, '.webp'),
       mimeType,       // 'image/webp' normally, 'image/png' on Safari (accepted for v1)
     };
   },

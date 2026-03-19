@@ -46,6 +46,7 @@ import type { AlbumManifest, PhotoEntry } from '@/types/album';
 export interface UploadSettings {
   blossomServer: string;
   relays: string[];
+  title?: string;
 }
 
 /** Return type of the useUpload hook */
@@ -235,6 +236,7 @@ export function useUpload(): UseUploadReturn {
 
         // Step 5: Build AlbumManifest
         const manifest: AlbumManifest = {
+          ...(settings.title ? { title: settings.title } : {}),
           createdAt: new Date().toISOString(),
           photos: photoEntries,
         };

@@ -33,30 +33,39 @@ export function SettingsPanel({ settings }: SettingsPanelProps) {
   };
 
   return (
-    <div className="mt-4 rounded border border-gray-200 p-4">
+    <div className="mt-4 rounded-lg border border-zinc-800 bg-zinc-900/50">
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900"
+        className="flex w-full items-center gap-2 px-4 py-3 text-xs font-medium text-zinc-500 hover:text-zinc-300 transition-colors"
         aria-expanded={isOpen}
       >
-        {isOpen ? '▾ Settings' : '▸ Settings'}
+        <svg
+          className={`h-3 w-3 transition-transform ${isOpen ? 'rotate-90' : ''}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={2}
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+        </svg>
+        Settings
       </button>
 
       {isOpen && (
-        <div className="mt-4 space-y-6">
+        <div className="border-t border-zinc-800 px-4 pb-4 pt-3 space-y-5">
           {/* Relays section */}
           <div>
             <label
               htmlFor="settings-relays"
-              className="mb-1 block text-sm font-medium text-gray-700"
+              className="mb-1.5 block text-xs font-medium text-zinc-400"
             >
               Nostr Relays
             </label>
             <textarea
               id="settings-relays"
-              className="w-full rounded border border-gray-200 p-2 text-sm font-mono"
-              rows={4}
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-800/50 p-3 text-xs font-mono text-zinc-200 placeholder-zinc-600 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 transition-colors"
+              rows={3}
               value={settings.relays.join('\n')}
               onChange={(e) => {
                 const lines = e.target.value
@@ -72,7 +81,7 @@ export function SettingsPanel({ settings }: SettingsPanelProps) {
           <div>
             <label
               htmlFor="settings-blossom"
-              className="mb-1 block text-sm font-medium text-gray-700"
+              className="mb-1.5 block text-xs font-medium text-zinc-400"
             >
               Blossom Server
             </label>
@@ -80,7 +89,7 @@ export function SettingsPanel({ settings }: SettingsPanelProps) {
               <input
                 id="settings-blossom"
                 type="text"
-                className="flex-1 rounded border border-gray-200 p-2 text-sm font-mono"
+                className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800/50 p-3 text-xs font-mono text-zinc-200 placeholder-zinc-600 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 transition-colors"
                 value={blossomInput}
                 onChange={(e) => setBlossomInput(e.target.value)}
                 onBlur={() => {
@@ -100,17 +109,17 @@ export function SettingsPanel({ settings }: SettingsPanelProps) {
                 type="button"
                 onClick={() => void handleSaveBlossomServer()}
                 disabled={isValidating}
-                className="shrink-0 rounded bg-gray-800 px-3 py-2 text-sm text-white hover:bg-gray-700 disabled:opacity-50"
+                className="shrink-0 rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-xs font-medium text-zinc-300 hover:bg-zinc-700 disabled:opacity-50 transition-colors"
               >
                 {isValidating ? (
-                  <span className="inline-block animate-spin">⟳</span>
+                  <span className="inline-block h-3 w-3 animate-spin rounded-full border border-zinc-500 border-t-zinc-300" />
                 ) : (
                   'Save'
                 )}
               </button>
             </div>
             {blossomError && (
-              <p className="mt-1 text-xs text-red-600">{blossomError}</p>
+              <p className="mt-1.5 text-xs text-red-400">{blossomError}</p>
             )}
           </div>
         </div>

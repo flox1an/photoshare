@@ -80,11 +80,11 @@ export function DropZone({ onFiles, isProcessing, disabled = false }: DropZonePr
       {...rootProps}
       className={[
         'flex flex-col items-center justify-center',
-        'rounded-xl border-2 border-dashed p-12 text-center',
-        'cursor-pointer transition-colors',
+        'rounded-xl border border-dashed p-12 text-center',
+        'cursor-pointer transition-all duration-200',
         isDragActive
-          ? 'border-blue-500 bg-blue-50 text-blue-700'
-          : 'border-gray-300 bg-gray-50 text-gray-500 hover:border-gray-400',
+          ? 'border-zinc-400 bg-zinc-800/60 text-zinc-300'
+          : 'border-zinc-700 bg-zinc-900/50 text-zinc-500 hover:border-zinc-500 hover:bg-zinc-800/40',
         isProcessing ? 'opacity-75 pointer-events-none' : '',
         disabled ? 'opacity-50 pointer-events-none' : '',
       ]
@@ -92,11 +92,16 @@ export function DropZone({ onFiles, isProcessing, disabled = false }: DropZonePr
         .join(' ')}
     >
       <input {...getInputProps()} />
-      <p className="text-lg font-medium">
+      <div className="mb-3 text-zinc-600">
+        <svg className="mx-auto h-8 w-8" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+        </svg>
+      </div>
+      <p className="text-sm font-medium text-zinc-300">
         {isDragActive ? 'Drop photos here' : 'Drag photos or a folder here'}
       </p>
-      <p className="mt-1 text-sm">or click to select files</p>
-      <p className="mt-2 text-xs text-gray-400">JPEG, PNG, HEIC, WebP — up to 200 photos</p>
+      <p className="mt-1 text-xs text-zinc-500">or click to select files</p>
+      <p className="mt-3 text-xs text-zinc-600">JPEG, PNG, HEIC, WebP — up to 200 photos</p>
     </div>
   );
 }

@@ -9,11 +9,11 @@ export default function DownloadProgress({ current, total }: DownloadProgressPro
   const percent = total > 0 ? (current / total) * 100 : 0;
 
   return (
-    <div className="w-full px-4 py-2">
-      <p className="text-sm text-gray-600 mb-1">Downloading {current}/{total}...</p>
-      <div className="w-full bg-gray-200 rounded h-2 overflow-hidden">
+    <div className="w-full px-5 py-3">
+      <p className="text-xs text-zinc-500 mb-1.5">Downloading {current}/{total}...</p>
+      <div className="w-full bg-zinc-800 rounded-full h-1 overflow-hidden">
         <div
-          className="h-2 bg-blue-500 rounded transition-all"
+          className="h-1 bg-zinc-400 rounded-full transition-all duration-300"
           style={{ width: `${percent}%` }}
         />
       </div>

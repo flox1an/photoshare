@@ -16,17 +16,17 @@ export function ProgressList() {
   const total = entries.length;
 
   return (
-    <div className="mt-6 w-full">
-      <div className="mb-3 flex items-center justify-between text-sm text-gray-600">
+    <div className="mt-5 w-full">
+      <div className="mb-2 flex items-center justify-between text-xs text-zinc-500">
         <span>
-          {done} / {total} processed
-          {errors > 0 && <span className="ml-2 text-red-500">{errors} failed</span>}
+          {done}/{total} processed
+          {errors > 0 && <span className="ml-2 text-red-400">{errors} failed</span>}
         </span>
         {done === total && total > 0 && (
-          <span className="font-medium text-green-600">All done</span>
+          <span className="font-medium text-emerald-400">Ready</span>
         )}
       </div>
-      <ul className="max-h-80 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200 bg-white">
+      <ul className="max-h-72 divide-y divide-zinc-800 overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-900/50">
         {entries.map((photo) => {
           // If this photo has an upload state, use the upload status for display
           const uploadState = uploadPhotos[photo.id];
@@ -54,12 +54,12 @@ interface PhotoRowProps {
 
 function PhotoRow({ filename, status, error }: PhotoRowProps) {
   return (
-    <li className="flex items-center gap-3 px-4 py-2 text-sm">
+    <li className="flex items-center gap-3 px-4 py-2.5 text-sm">
       <StatusDot status={status} />
-      <span className="flex-1 truncate text-gray-800">{filename}</span>
-      <span className="shrink-0 capitalize text-xs text-gray-400">{status}</span>
+      <span className="flex-1 truncate text-zinc-300 font-mono text-xs">{filename}</span>
+      <span className="shrink-0 text-[10px] uppercase tracking-wider text-zinc-600">{status}</span>
       {error && (
-        <span className="shrink-0 text-xs text-red-500" title={error}>
+        <span className="shrink-0 text-[10px] text-red-400" title={error}>
           Error
         </span>
       )}
@@ -69,12 +69,12 @@ function PhotoRow({ filename, status, error }: PhotoRowProps) {
 
 function StatusDot({ status }: { status: PhotoProcessingStatus }) {
   const colors: Record<PhotoProcessingStatus, string> = {
-    pending: 'bg-gray-300',
+    pending: 'bg-zinc-600',
     processing: 'bg-blue-400 animate-pulse',
-    encrypting: 'bg-purple-400 animate-pulse',
-    uploading: 'bg-yellow-400 animate-pulse',
-    done: 'bg-green-500',
-    error: 'bg-red-500',
+    encrypting: 'bg-violet-400 animate-pulse',
+    uploading: 'bg-amber-400 animate-pulse',
+    done: 'bg-emerald-400',
+    error: 'bg-red-400',
   };
-  return <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${colors[status]}`} />;
+  return <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${colors[status]}`} />;
 }
