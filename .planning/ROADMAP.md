@@ -62,7 +62,14 @@ Plans:
   3. A Nostr kind 30078 event with NIP-40 expiration (~30 days) is published and confirmed via relay OK response before any share link is generated
   4. User can change the Blossom server(s) and Nostr relay list via a settings panel, and the next upload uses the new values
   5. The share link is only shown after all photo uploads succeed and the relay confirms the event
-**Plans**: TBD
+**Plans**: 6 plans
+Plans:
+- [ ] 03-01-PLAN.md — Wave 0 TDD scaffolds: 6 failing test files for all Phase 3 source modules
+- [ ] 03-02-PLAN.md — Implement Blossom upload library (sha256Hex, BUD-11 auth, uploadBlob, validateBlossomServer) and kind 30078 event builder
+- [ ] 03-03-PLAN.md — Implement upload Zustand store with encrypting/uploading/done/error status union
+- [ ] 03-04-PLAN.md — Implement useUpload hook: full encrypt→upload→publish pipeline with p-limit and relay OK gate
+- [ ] 03-05-PLAN.md — Implement useSettings hook (localStorage persistence, Blossom CORS validation) and SettingsPanel component
+- [ ] 03-06-PLAN.md — Wire UploadPanel with ShareCard, SettingsPanel, Upload button; human-verify end-to-end
 
 ### Phase 4: Share Link and Viewer
 **Goal**: Anyone with the share link can view the full album in a browser — thumbnail grid, lightbox slideshow, and download all — without any account or prior knowledge
@@ -85,5 +92,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Foundation | 3/3 | Complete   | 2026-03-19 |
 | 2. Image Processing Pipeline | 3/5 | In Progress|  |
-| 3. Upload and Publishing | 0/? | Not started | - |
+| 3. Upload and Publishing | 0/6 | Not started | - |
 | 4. Share Link and Viewer | 0/? | Not started | - |
