@@ -7,8 +7,10 @@ vi.mock("applesauce-loaders/loaders/address-loader", () => ({
 }));
 
 // Mock applesauce-relay/pool — no-op constructor
+// vitest 4.x requires 'function' (not arrow) when mock is used as a constructor via 'new'
 vi.mock("applesauce-relay/pool", () => ({
-  RelayPool: vi.fn().mockImplementation(() => ({})),
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  RelayPool: vi.fn().mockImplementation(function () { return {}; }),
 }));
 
 import { createAddressLoader } from "applesauce-loaders/loaders/address-loader";
