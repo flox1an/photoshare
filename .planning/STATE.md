@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 03-03-PLAN.md — upload Zustand store with 6-state status progression
-last_updated: "2026-03-19T16:40:40.901Z"
+stopped_at: Completed 03-02-PLAN.md — Blossom upload library and kind 30078 event builder
+last_updated: "2026-03-19T16:42:41.939Z"
 last_activity: 2026-03-19 — Roadmap created
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 14
-  completed_plans: 10
+  completed_plans: 11
   percent: 0
 ---
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02-image-processing-pipeline P05 | 45 | 3 tasks | 3 files |
 | Phase 03-upload-and-publishing P01 | 570 | 2 tasks | 6 files |
 | Phase 03-upload-and-publishing P03 | 2 | 1 tasks | 3 files |
+| Phase 03-upload-and-publishing P02 | 3 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,8 @@ Recent decisions affecting current work:
 - [Phase 03-upload-and-publishing]: uploadStore uses addPhoto(id, filename) API — per-photo granularity vs processingStore batch pattern
 - [Phase 03-upload-and-publishing]: uploadStore includes addPhoto(id, filename) — tests are ground truth over plan interface spec
 - [Phase 03-upload-and-publishing]: setUploadDone takes full BlobDescriptor (url, sha256, size, type, uploaded) matching actual test expectations
+- [Phase 03-upload-and-publishing]: includeSingletonTag([d, dTag]) used instead of includeReplaceableIdentifier(dTag) because applesauce-factory build() pre-applies nanoid d-tag before user operations
+- [Phase 03-upload-and-publishing]: uploadBlob signature includes localHashHex as explicit parameter to enable pre-computed hash reuse and match test contract from 03-01
 
 ### Pending Todos
 
@@ -103,6 +106,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T16:40:40.899Z
-Stopped at: Completed 03-03-PLAN.md — upload Zustand store with 6-state status progression
+Last session: 2026-03-19T16:42:41.937Z
+Stopped at: Completed 03-02-PLAN.md — Blossom upload library and kind 30078 event builder
 Resume file: None
