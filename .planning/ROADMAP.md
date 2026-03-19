@@ -81,7 +81,13 @@ Plans:
   3. The gallery is usable on a mobile phone in portrait orientation — thumbnails grid is legible and the lightbox is not clipped
   4. Thumbnails load immediately from Blossom on page open; full-resolution images load only when opened in the lightbox
   5. User can tap "Download all" and receives decrypted full-resolution images as a zip file
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+- [ ] 04-01-PLAN.md — Wave 0 TDD scaffolds: 5 failing test files for all Phase 4 viewer modules
+- [ ] 04-02-PLAN.md — Implement lib/blossom/fetch.ts (BUD-01 GET) and lib/nostr/viewer.ts (loadAlbumEvent + decryptManifest)
+- [ ] 04-03-PLAN.md — Implement useAlbumViewer hook: manifest loading, lazy thumbnail fetch, download-all with JSZip
+- [ ] 04-04-PLAN.md — Implement SkeletonCard, ThumbnailGrid (CSS Grid + IntersectionObserver), and Lightbox (swipe + keyboard)
+- [ ] 04-05-PLAN.md — Implement DownloadProgress, wire ViewerPanel; human-verify end-to-end
 
 ## Progress
 
@@ -93,4 +99,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Foundation | 3/3 | Complete   | 2026-03-19 |
 | 2. Image Processing Pipeline | 3/5 | In Progress|  |
 | 3. Upload and Publishing | 6/6 | Complete   | 2026-03-19 |
-| 4. Share Link and Viewer | 0/? | Not started | - |
+| 4. Share Link and Viewer | 0/5 | Planning complete | - |
