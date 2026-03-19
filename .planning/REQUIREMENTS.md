@@ -39,19 +39,19 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Viewer
 
-- [ ] **VIEW-01**: Viewer decrypts Nostr event using key from URL #fragment
-- [ ] **VIEW-02**: Viewer fetches and decrypts image blobs from Blossom
-- [ ] **VIEW-03**: Thumbnail grid gallery displays all album photos
-- [ ] **VIEW-04**: Full-screen lightbox with swipe/arrow navigation
-- [ ] **VIEW-05**: User can download all album images as decrypted files
-- [ ] **VIEW-06**: Images lazy-load (thumbnails first, full images on demand)
-- [ ] **VIEW-07**: Gallery is mobile-responsive with touch/swipe support
+- [x] **VIEW-01**: Viewer decrypts Nostr event using key from URL #fragment
+- [x] **VIEW-02**: Viewer fetches and decrypts image blobs from Blossom
+- [x] **VIEW-03**: Thumbnail grid gallery displays all album photos
+- [x] **VIEW-04**: Full-screen lightbox with swipe/arrow navigation
+- [x] **VIEW-05**: User can download all album images as decrypted files
+- [x] **VIEW-06**: Images lazy-load (thumbnails first, full images on demand)
+- [x] **VIEW-07**: Gallery is mobile-responsive with touch/swipe support
 
 ### Settings
 
 - [x] **CONF-01**: User can configure Nostr relay list via settings panel
 - [x] **CONF-02**: User can configure Blossom server(s) via settings panel
-- [ ] **CONF-03**: Relay hints are encoded in the share link so viewer knows where to fetch
+- [x] **CONF-03**: Relay hints are encoded in the share link so viewer knows where to fetch
 - [x] **CONF-04**: Sensible defaults (24242.io for Blossom, relay.nostu.be for dev relay)
 
 ## v2 Requirements
@@ -109,16 +109,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UPLD-06 | Phase 3 | Complete |
 | UPLD-07 | Phase 3 | Complete |
 | UPLD-08 | Phase 3 | Complete |
-| VIEW-01 | Phase 4 | Pending |
-| VIEW-02 | Phase 4 | Pending |
-| VIEW-03 | Phase 4 | Pending |
-| VIEW-04 | Phase 4 | Pending |
-| VIEW-05 | Phase 4 | Pending |
-| VIEW-06 | Phase 4 | Pending |
-| VIEW-07 | Phase 4 | Pending |
+| VIEW-01 | Phase 4 | Complete |
+| VIEW-02 | Phase 4 | Complete |
+| VIEW-03 | Phase 4 | Complete |
+| VIEW-04 | Phase 4 | Complete |
+| VIEW-05 | Phase 4 | Complete |
+| VIEW-06 | Phase 4 | Complete |
+| VIEW-07 | Phase 4 | Complete |
 | CONF-01 | Phase 3 | Complete |
 | CONF-02 | Phase 3 | Complete |
-| CONF-03 | Phase 4 | Pending |
+| CONF-03 | Phase 4 | Complete |
 | CONF-04 | Phase 1 | Complete |
 
 **Coverage:**

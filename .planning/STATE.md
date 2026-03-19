@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 03-upload-and-publishing-06-PLAN.md — Phase 3 complete, human verification approved
-last_updated: "2026-03-19T17:35:23.571Z"
+stopped_at: Completed 04-share-link-and-viewer-01-PLAN.md — Wave 0 RED tests for Phase 4 viewer
+last_updated: "2026-03-19T18:04:30.339Z"
 last_activity: 2026-03-19 — Roadmap created
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 14
-  completed_plans: 14
+  total_plans: 19
+  completed_plans: 15
   percent: 0
 ---
 
@@ -64,6 +64,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03-upload-and-publishing P04 | 613 | 1 tasks | 4 files |
 | Phase 03-upload-and-publishing P05 | 323 | 2 tasks | 3 files |
 | Phase 03-upload-and-publishing P06 | 45 | 3 tasks | 5 files |
+| Phase 04-share-link-and-viewer P01 | 8 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -105,6 +106,10 @@ Recent decisions affecting current work:
 - [Phase 03-upload-and-publishing]: SettingsPanel saves Blossom server on blur/Enter (not only explicit Save) for immediate UX feedback
 - [Phase 03-upload-and-publishing]: Blossom validation uses GET not HEAD — some servers reject HEAD; browser enforces CORS on actual requests
 - [Phase 03-upload-and-publishing]: Default Blossom server changed to tempstore.apps3.slidestr.net — empirically verified CORS support during browser testing
+- [Phase 04-share-link-and-viewer]: jszip and @use-gesture/react installed as production dependencies (required by implementation plans 04-02 through 04-05)
+- [Phase 04-share-link-and-viewer]: ThumbnailGrid objectUrls keyed by thumbHash (not index) — allows sparse URL map as thumbnails load asynchronously
+- [Phase 04-share-link-and-viewer]: Lightbox test contracts data-testid='lightbox-overlay' — implementation must use this attribute for overlay click-to-close
+- [Phase 04-share-link-and-viewer]: useAlbumViewer downloadAll signature: downloadAll(photos, key, server, onProgress?: (current, total) => void)
 
 ### Pending Todos
 
@@ -118,6 +123,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T17:29:59.083Z
-Stopped at: Completed 03-upload-and-publishing-06-PLAN.md — Phase 3 complete, human verification approved
+Last session: 2026-03-19T18:04:30.337Z
+Stopped at: Completed 04-share-link-and-viewer-01-PLAN.md — Wave 0 RED tests for Phase 4 viewer
 Resume file: None
