@@ -28,7 +28,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. `lib/crypto.ts` encrypts and decrypts a test blob using AES-256-GCM and produces a unique IV on every call — verified by unit tests
   3. An ephemeral Nostr keypair is generated in-browser with no persistent storage — confirmed by inspecting localStorage after page reload
   4. Default Blossom server (24242.io) and default relay (relay.nostu.be) are configured and accessible via `lib/config.ts`
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 01-01-PLAN.md — Scaffold Next.js 16 project, install all dependencies, configure Vitest with jsdom, establish SSR boundaries
+- [ ] 01-02-PLAN.md — Implement AES-256-GCM crypto module with TDD (CRYPT-01 through CRYPT-04)
+- [ ] 01-03-PLAN.md — Implement types/album.ts, lib/config.ts, lib/nostr/signer.ts, lib/nostr/naddr.ts with tests (CONF-04, UPLD-04)
 
 ### Phase 2: Image Processing Pipeline
 **Goal**: Up to 200 photos can be dragged in and processed client-side without blocking the UI or exhausting browser memory
@@ -73,7 +77,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/? | Not started | - |
+| 1. Foundation | 0/3 | Not started | - |
 | 2. Image Processing Pipeline | 0/? | Not started | - |
 | 3. Upload and Publishing | 0/? | Not started | - |
 | 4. Share Link and Viewer | 0/? | Not started | - |
