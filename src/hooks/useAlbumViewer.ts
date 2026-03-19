@@ -41,7 +41,7 @@ export interface AlbumViewerState {
  *
  * CRITICAL: window.location.hash is only accessed inside useEffect — never in render body.
  */
-export function useAlbumViewer(): AlbumViewerState {
+export function useAlbumViewer(_opts?: { naddr?: string }): AlbumViewerState {
   const [status] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error] = useState<string | null>(null);
   const [manifest] = useState<AlbumManifest | null>(null);
