@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 04-share-link-and-viewer-01-PLAN.md — Wave 0 RED tests for Phase 4 viewer
-last_updated: "2026-03-19T18:04:30.339Z"
+stopped_at: Completed 04-share-link-and-viewer-02-PLAN.md — fetchBlob + loadAlbumEvent + decryptManifest
+last_updated: "2026-03-19T18:10:33.494Z"
 last_activity: 2026-03-19 — Roadmap created
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 19
-  completed_plans: 15
+  completed_plans: 16
   percent: 0
 ---
 
@@ -65,6 +65,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03-upload-and-publishing P05 | 323 | 2 tasks | 3 files |
 | Phase 03-upload-and-publishing P06 | 45 | 3 tasks | 5 files |
 | Phase 04-share-link-and-viewer P01 | 8 | 2 tasks | 5 files |
+| Phase 04-share-link-and-viewer P02 | 169 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -110,6 +111,9 @@ Recent decisions affecting current work:
 - [Phase 04-share-link-and-viewer]: ThumbnailGrid objectUrls keyed by thumbHash (not index) — allows sparse URL map as thumbnails load asynchronously
 - [Phase 04-share-link-and-viewer]: Lightbox test contracts data-testid='lightbox-overlay' — implementation must use this attribute for overlay click-to-close
 - [Phase 04-share-link-and-viewer]: useAlbumViewer downloadAll signature: downloadAll(photos, key, server, onProgress?: (current, total) => void)
+- [Phase 04-share-link-and-viewer]: loadAlbumEvent accepts AddressPointer not naddr string — tests are ground truth over plan spec
+- [Phase 04-share-link-and-viewer]: vitest 4.x requires function() not arrow () => {} in mockImplementation when mock used as constructor
+- [Phase 04-share-link-and-viewer]: RelayPool created inside try block to ensure constructor errors produce user-friendly error message
 
 ### Pending Todos
 
@@ -123,6 +127,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T18:04:30.337Z
-Stopped at: Completed 04-share-link-and-viewer-01-PLAN.md — Wave 0 RED tests for Phase 4 viewer
+Last session: 2026-03-19T18:10:33.492Z
+Stopped at: Completed 04-share-link-and-viewer-02-PLAN.md — fetchBlob + loadAlbumEvent + decryptManifest
 Resume file: None
