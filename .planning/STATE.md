@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 03-05-PLAN.md — useSettings hook and SettingsPanel component
-last_updated: "2026-03-19T17:05:00.885Z"
+stopped_at: "Checkpoint: 03-06 Task 3 human-verify — awaiting browser verification of upload flow"
+last_updated: "2026-03-19T17:11:34.389Z"
 last_activity: 2026-03-19 — Roadmap created
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 14
-  completed_plans: 13
+  completed_plans: 14
   percent: 0
 ---
 
@@ -99,6 +99,8 @@ Recent decisions affecting current work:
 - [Phase 03-upload-and-publishing]: vitest.setup.ts Uint8Array Symbol.hasInstance patch for jsdom cross-realm typed array issue with @noble/hashes
 - [Phase 03-upload-and-publishing]: useSettings hook delegates Blossom validation to SettingsPanel — keeps hook unit-testable without network mocks (tests are ground truth)
 - [Phase 03-upload-and-publishing]: vitest.config.ts execArgv --no-experimental-webstorage required for Node.js 25 — disables built-in Web Storage that overrides jsdom localStorage
+- [Phase 03-upload-and-publishing]: ProgressList merges processingStore + uploadStore: if uploadPhotos[photo.id] exists, use upload status for display
+- [Phase 03-upload-and-publishing]: ShareCard returns null when !isUploading && !shareLink && !publishError to avoid empty card on page load
 
 ### Pending Todos
 
@@ -112,6 +114,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T17:05:00.883Z
-Stopped at: Completed 03-05-PLAN.md — useSettings hook and SettingsPanel component
+Last session: 2026-03-19T17:11:29.128Z
+Stopped at: Checkpoint: 03-06 Task 3 human-verify — awaiting browser verification of upload flow
 Resume file: None
