@@ -26,6 +26,7 @@ export function DropZone({ onFiles, isProcessing }: DropZoneProps) {
 
   // Native drop handler intercepts folder drops using webkitGetAsEntry()
   // Must collect entries synchronously (dataTransfer.items cleared after microtask boundary)
+  // Streams files to onFiles in chunks for instant UI feedback
   const handleNativeDrop = useCallback(
     async (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
@@ -37,14 +38,30 @@ export function DropZone({ onFiles, isProcessing }: DropZoneProps) {
 
       if (entries.length === 0) return;
 
-      // Check if any entry is a directory — if so use traversal for all
-      const hasDirectory = entries.some((entry) => entry.isDirectory);
-      if (hasDirectory) {
-        const nested = await Promise.all(entries.map(traverseEntry));
-        const files = nested.flat().filter(isImageFile);
-        if (files.length > 0) onFiles(files);
-      }
-      // Individual files are handled by react-dropzone's onDrop above
+      // Resolve entries and stream files to the UI as they become available
+      // This gives instant feedback — files appear in ProgressList immediately
+      const CHUNK_SIZE = 10;
+      let buffer: File[] = [];
+
+      const flush = () => {
+        if (buffer.length > 0) {
+          onFiles(buffer);
+          buffer = [];
+        }
+      };
+
+      const resolveEntry = async (entry: FileSystemEntry) => {
+        const files = await traverseEntry(entry);
+        for (const file of files) {
+          if (isImageFile(file)) {
+            buffer.push(file);
+            if (buffer.length >= CHUNK_SIZE) flush();
+          }
+        }
+      };
+
+      await Promise.all(entries.map(resolveEntry));
+      flush(); // flush remaining files
     },
     [onFiles],
   );
