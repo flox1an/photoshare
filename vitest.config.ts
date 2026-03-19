@@ -8,6 +8,11 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
+    // Disable Node.js 25+ experimental Web Storage API so jsdom's
+    // localStorage implementation (which supports .clear()) is used instead.
+    // Node's --experimental-webstorage provides a global `localStorage` that
+    // overwrites jsdom's and is missing .clear() without --localstorage-file.
+    execArgv: ["--no-experimental-webstorage"],
   },
   resolve: {
     alias: {
