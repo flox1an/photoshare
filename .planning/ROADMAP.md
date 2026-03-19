@@ -44,7 +44,13 @@ Plans:
   3. Each processed image is a WebP file sized appropriately for full-screen display and accompanied by a smaller WebP thumbnail
   4. HEIC files from an iPhone are detected and converted — they appear in the processed output alongside JPEG/PNG inputs
   5. Processing completes for 200 photos and the browser tab remains stable (no out-of-memory crash)
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+- [ ] 02-01-PLAN.md — Install dependencies, define ProcessedPhoto/ProcessorApi types, create Wave 0 test scaffolds
+- [ ] 02-02-PLAN.md — Implement heic-detect.ts, dimensions.ts, and image-processor.worker.ts (Comlink + OffscreenCanvas)
+- [ ] 02-03-PLAN.md — Implement folder-traverse.ts with webkitGetAsEntry pagination loop
+- [ ] 02-04-PLAN.md — Implement Zustand processing store and useImageProcessor hook (p-limit concurrency)
+- [ ] 02-05-PLAN.md — Wire DropZone.tsx, ProgressList.tsx, UploadPanel.tsx; human-verify end-to-end pipeline
 
 ### Phase 3: Upload and Publishing
 **Goal**: Processed and encrypted images are uploaded to Blossom and an encrypted album manifest is published to a Nostr relay, with clear per-photo progress feedback
