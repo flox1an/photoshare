@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 04-share-link-and-viewer-03-PLAN.md — useAlbumViewer hook
-last_updated: "2026-03-19T18:18:52.381Z"
+stopped_at: Completed 04-share-link-and-viewer-04-PLAN.md — SkeletonCard, ThumbnailGrid, Lightbox components
+last_updated: "2026-03-19T18:26:58.222Z"
 last_activity: 2026-03-19 — Roadmap created
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 19
-  completed_plans: 17
+  completed_plans: 18
   percent: 0
 ---
 
@@ -67,6 +67,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04-share-link-and-viewer P01 | 8 | 2 tasks | 5 files |
 | Phase 04-share-link-and-viewer P02 | 169 | 2 tasks | 3 files |
 | Phase 04-share-link-and-viewer P03 | 6 | 1 tasks | 2 files |
+| Phase 04-share-link-and-viewer P04 | 12 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,8 @@ Recent decisions affecting current work:
 - [Phase 04-share-link-and-viewer]: RelayPool created inside try block to ensure constructor errors produce user-friendly error message
 - [Phase 04-share-link-and-viewer]: downloadAll signature: downloadAll(photos, key, server, onProgress?) — params not from hook state, enabling unit-testable function without full manifest load
 - [Phase 04-share-link-and-viewer]: vitest 4.x constructor mocks: renderHook moved before createElement spy in useAlbumViewer tests; mockImplementation uses function() not arrow for JSZip constructor
+- [Phase 04-share-link-and-viewer]: try/catch on new IntersectionObserver: vitest 4.x Reflect.construct fails for arrow-function mockImplementations; catch falls back to direct call
+- [Phase 04-share-link-and-viewer]: @testing-library/jest-dom installed + vitest.setup.ts import for toHaveAttribute matcher in ThumbnailGrid tests
 
 ### Pending Todos
 
@@ -130,6 +133,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T18:18:52.379Z
-Stopped at: Completed 04-share-link-and-viewer-03-PLAN.md — useAlbumViewer hook
+Last session: 2026-03-19T18:26:58.220Z
+Stopped at: Completed 04-share-link-and-viewer-04-PLAN.md — SkeletonCard, ThumbnailGrid, Lightbox components
 Resume file: None
