@@ -1,3 +1,5 @@
+import "@testing-library/jest-dom";
+
 /**
  * Vitest global setup — fixes cross-realm Uint8Array issue in jsdom environment.
  *
