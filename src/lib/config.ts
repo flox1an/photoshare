@@ -5,6 +5,8 @@
  */
 export const DEFAULT_RELAYS: string[] = [
   "wss://relay.nostu.be",
+  "wss://relay.damus.io",
+  "wss://nos.lol",
 ];
 
 /**

@@ -27,8 +27,8 @@ describe("DEFAULT_BLOSSOM_SERVER (CONF-04)", () => {
     expect(DEFAULT_BLOSSOM_SERVER).toMatch(/^https:\/\//);
   });
 
-  it("is 24242.io", () => {
-    expect(DEFAULT_BLOSSOM_SERVER).toBe("https://24242.io");
+  it("is tempstore.apps3.slidestr.net", () => {
+    expect(DEFAULT_BLOSSOM_SERVER).toBe("https://tempstore.apps3.slidestr.net");
   });
 });
 
