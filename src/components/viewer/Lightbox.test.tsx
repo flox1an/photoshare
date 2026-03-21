@@ -1,4 +1,4 @@
-import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
+import { vi, describe, it, expect, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import Lightbox from "@/components/viewer/Lightbox";
 import type { PhotoEntry } from "@/types/album";
@@ -6,27 +6,21 @@ import type { PhotoEntry } from "@/types/album";
 const samplePhotos: PhotoEntry[] = [
   {
     hash: "aabbcc001",
-    iv: "aaaaaaaaaaaa",
     thumbHash: "ddeeff001",
-    thumbIv: "bbbbbbbbbbbb",
     width: 1920,
     height: 1080,
     filename: "photo1.jpg",
   },
   {
     hash: "aabbcc002",
-    iv: "cccccccccccc",
     thumbHash: "ddeeff002",
-    thumbIv: "dddddddddddd",
     width: 800,
     height: 600,
     filename: "photo2.jpg",
   },
   {
     hash: "aabbcc003",
-    iv: "eeeeeeeeeeee",
     thumbHash: "ddeeff003",
-    thumbIv: "ffffffffffff",
     width: 1024,
     height: 768,
     filename: "photo3.jpg",
