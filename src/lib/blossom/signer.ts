@@ -1,3 +1,4 @@
+import type { ISigner } from "applesauce-signers";
 import { PrivateKeySigner } from "applesauce-signers";
 
 /**
@@ -17,6 +18,6 @@ export function createEphemeralSigner(): PrivateKeySigner {
  * Get the hex public key from a signer.
  * Returns a 64-character lowercase hex string (32 bytes = 256 bits).
  */
-export async function getSignerPubkey(signer: PrivateKeySigner): Promise<string> {
+export async function getSignerPubkey(signer: ISigner): Promise<string> {
   return signer.getPublicKey();
 }

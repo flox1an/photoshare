@@ -12,7 +12,7 @@
  * - Hash mismatch between local and server SHA-256 causes an immediate throw.
  */
 
-import type { PrivateKeySigner } from "applesauce-signers";
+import type { PrivateKeySigner, ISigner } from "applesauce-signers";
 import { build } from "applesauce-factory/event-factory";
 import { setExpirationTimestamp, includeSingletonTag } from "applesauce-factory/operations";
 import type { BlobDescriptor } from "@/types/blossom";
@@ -44,7 +44,7 @@ export async function sha256Hex(buffer: ArrayBuffer): Promise<string> {
  * decode with atob() which requires standard base64 padding and chars.
  */
 export async function buildBlossomUploadAuth(
-  signer: InstanceType<typeof PrivateKeySigner>,
+  signer: ISigner,
   blobHashHex: string,
 ): Promise<string> {
   const nowSec = Math.floor(Date.now() / 1000) - 5; // subtract 5s to avoid clock-skew "created_at in the future" errors
