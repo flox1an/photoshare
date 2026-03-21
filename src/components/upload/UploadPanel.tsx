@@ -7,6 +7,7 @@ import { useUpload } from '@/hooks/useUpload';
 import { useSettings } from '@/hooks/useSettings';
 import { useProcessingStore } from '@/store/processingStore';
 import { useNostrAccountStore } from '@/store/nostrAccountStore';
+import { useNostrProfile, profileDisplayName } from '@/hooks/useNostrProfile';
 import { DropZone } from './DropZone';
 import { ProgressList } from './ProgressList';
 import { SettingsPanel } from './SettingsPanel';
@@ -27,6 +28,7 @@ export default function UploadPanel() {
   const [loginOpen, setLoginOpen] = useState(false);
   const pubkey = useNostrAccountStore((state) => state.pubkey);
   const logout = useNostrAccountStore((state) => state.logout);
+  const profile = useNostrProfile(pubkey);
 
   // Collect ProcessedPhoto results for photos that finished processing
   const processedPhotos = Object.values(photos).filter((p) => p.status === 'done' && p.result);
@@ -73,7 +75,17 @@ export default function UploadPanel() {
               </button>
             ) : (
               <>
-                <span className="text-zinc-500 font-mono text-xs">{formatNpub(pubkey)}</span>
+                {profile?.picture && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={profile.picture}
+                    alt="avatar"
+                    className="w-6 h-6 rounded-full object-cover flex-shrink-0"
+                  />
+                )}
+                <span className="text-zinc-400 text-xs max-w-[120px] truncate">
+                  {profileDisplayName(profile, formatNpub(pubkey))}
+                </span>
                 <button
                   type="button"
                   onClick={logout}
