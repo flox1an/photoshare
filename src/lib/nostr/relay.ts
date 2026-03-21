@@ -1,4 +1,4 @@
-import { SimplePool, mergeFilters } from 'nostr-tools'
+import { SimplePool } from 'nostr-tools'
 import type { Filter, NostrEvent } from 'nostr-tools'
 
 // Module-level singleton — shared across all NostrConnect sessions.
@@ -14,9 +14,9 @@ export function subscriptionMethod(
   filters: Filter[],
   handlers: { onevent: (event: NostrEvent) => void; oneose?: () => void },
 ): () => void {
-  const mergedFilter = mergeFilters(...filters)
-  const sub = pool.subscribe(relays, mergedFilter, handlers)
-  return () => sub.close()
+  // subscribeMany takes one Filter at a time; create one sub per filter
+  const subs = filters.map((filter) => pool.subscribeMany(relays, filter, handlers))
+  return () => subs.forEach((s) => s.close())
 }
 
 /**

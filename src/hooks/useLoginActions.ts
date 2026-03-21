@@ -19,7 +19,7 @@ export function useLoginActions() {
 
     async bunker(
       input: string,
-      opts?: { onAuth?: (url: string) => void },
+      opts?: { onAuth?: (url: string) => Promise<void> },
     ): Promise<void> {
       const trimmed = input.trim()
       if (!trimmed) throw new Error('Bunker URI cannot be empty')
