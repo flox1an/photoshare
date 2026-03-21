@@ -96,7 +96,7 @@ export function QRCodeLogin({ onLogin, onError }: QRCodeLoginProps) {
 
       <div className="p-4 bg-white rounded-xl">
         {uri ? (
-          <QRCodeSVG value={uri} size={200} level="M" includeMargin={false} />
+          <QRCodeSVG value={uri} size={200} level="M" marginSize={0} />
         ) : (
           <div className="w-[200px] h-[200px] flex items-center justify-center">
             <div className="w-8 h-8 rounded-full border-2 border-zinc-600 border-t-zinc-300 animate-spin" />
