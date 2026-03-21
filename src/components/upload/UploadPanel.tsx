@@ -1,21 +1,32 @@
 'use client';
 
 import { useState } from 'react';
+import { nip19 } from 'nostr-tools';
 import { useImageProcessor } from '@/hooks/useImageProcessor';
 import { useUpload } from '@/hooks/useUpload';
 import { useSettings } from '@/hooks/useSettings';
 import { useProcessingStore } from '@/store/processingStore';
+import { useNostrAccountStore } from '@/store/nostrAccountStore';
 import { DropZone } from './DropZone';
 import { ProgressList } from './ProgressList';
 import { SettingsPanel } from './SettingsPanel';
 import { ShareCard } from './ShareCard';
+import { LoginDialog } from '@/components/auth/LoginDialog';
+
+function formatNpub(pubkey: string): string {
+  const npub = nip19.npubEncode(pubkey);
+  return 'npub1' + npub.slice(5, 9) + '…' + npub.slice(-4);
+}
 
 export default function UploadPanel() {
-  const { processBatch, isProcessing } = useImageProcessor();
+  const { processBatch, isProcessing, fileMap } = useImageProcessor();
   const { startUpload, shareLink, isUploading, publishError } = useUpload();
   const settings = useSettings();
   const photos = useProcessingStore((state) => state.photos);
   const [albumTitle, setAlbumTitle] = useState('');
+  const [loginOpen, setLoginOpen] = useState(false);
+  const pubkey = useNostrAccountStore((state) => state.pubkey);
+  const logout = useNostrAccountStore((state) => state.logout);
 
   // Collect ProcessedPhoto results for photos that finished processing
   const processedPhotos = Object.values(photos).filter((p) => p.status === 'done' && p.result);
@@ -27,29 +38,65 @@ export default function UploadPanel() {
     const photosToUpload = processedPhotos
       .map((p) => p.result!)
       .filter(Boolean);
+    const photoIds = processedPhotos.map((p) => p.id);
+    const originalFiles = settings.keepOriginals
+      ? processedPhotos.map((p) => fileMap.get(p.id) ?? null)
+      : undefined;
     void startUpload(photosToUpload, {
-      blossomServer: settings.blossomServer,
+      blossomServers: settings.blossomServers,
       title: albumTitle || undefined,
-    });
+      keepOriginals: settings.keepOriginals,
+      originalFiles,
+    }, photoIds);
   };
 
   return (
     <main className="min-h-screen p-6 md:p-12">
       <div className="mx-auto max-w-2xl">
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-100">
-            PhotoShare
-          </h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            Encrypted photo albums. Nothing leaves your device unencrypted.
-          </p>
+        <div className="flex items-start justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-zinc-100">
+              PhotoShare
+            </h1>
+            <p className="mt-1 text-sm text-zinc-500">
+              Encrypted photo albums. Nothing leaves your device unencrypted.
+            </p>
+          </div>
+          <div className="flex-shrink-0 self-center flex items-center gap-2 text-sm">
+            {pubkey === null ? (
+              <button
+                type="button"
+                onClick={() => setLoginOpen(true)}
+                className="text-zinc-400 hover:text-zinc-100 transition-colors"
+              >
+                Sign in
+              </button>
+            ) : (
+              <>
+                <span className="text-zinc-500 font-mono text-xs">{formatNpub(pubkey)}</span>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="text-zinc-500 hover:text-zinc-300 transition-colors"
+                >
+                  Sign out
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Drop zone — disabled during upload to prevent new additions */}
-        <DropZone onFiles={processBatch} isProcessing={isProcessing} disabled={isUploading} />
+        {/* Drop zone — hidden during upload to prevent new additions */}
+        {!isUploading && !shareLink && (
+          <DropZone onFiles={processBatch} isProcessing={isProcessing} />
+        )}
 
         {/* Settings panel — always visible below drop zone, collapsed by default */}
-        <SettingsPanel settings={settings} />
+        <SettingsPanel
+          settings={settings}
+          keepOriginals={settings.keepOriginals}
+          onKeepOriginalsChange={settings.setKeepOriginals}
+        />
 
         {/* Progress list — appears after first photo is added */}
         <ProgressList />
@@ -83,6 +130,7 @@ export default function UploadPanel() {
           />
         )}
       </div>
+      <LoginDialog isOpen={loginOpen} onClose={() => setLoginOpen(false)} />
     </main>
   );
 }
