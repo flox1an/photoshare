@@ -10,8 +10,8 @@ export interface PhotoEntry {
   height: number;
   /** Display filename — original filename (e.g. IMG_2847.HEIC) when origHash is set, otherwise the webp filename (e.g. IMG_2847.webp) */
   filename: string;
-  /** BlurHash string for blurred placeholder preview before thumbnail loads */
-  blurhash?: string;
+  /** ThumbHash string (base64) for blurred placeholder preview before thumbnail loads */
+  thumbhash?: string;
   /** SHA-256 hash of the encrypted original file blob — present when album was created with keepOriginals */
   origHash?: string;
 }

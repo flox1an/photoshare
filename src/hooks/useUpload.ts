@@ -10,7 +10,7 @@
  *      a. encrypt full + thumb (IV-prepend)
  *      b. SHA-256 each blob
  *      c. upload both blobs to ALL configured Blossom servers
- *      d. accumulate PhotoEntry (with blurhash)
+ *      d. accumulate PhotoEntry (with thumbhash)
  *   4. Build + encrypt manifest → upload to ALL servers
  *   5. Generate opaque share URL: /{pathToken}#{keyB64url}
  *      pathToken = base64url(hashBytes[32] + NUL-separated server URLs)
@@ -166,7 +166,7 @@ export function useUpload(): UseUploadReturn {
                     width: photo.width,
                     height: photo.height,
                     filename: origFile?.name ?? photo.filename,
-                    ...(photo.blurhash ? { blurhash: photo.blurhash } : {}),
+                    ...(photo.thumbhash ? { thumbhash: photo.thumbhash } : {}),
                     ...(origHash ? { origHash } : {}),
                   };
 

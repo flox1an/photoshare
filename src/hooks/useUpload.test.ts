@@ -63,7 +63,7 @@ function makePhoto(index = 0) {
     height: 1080,
     filename: `photo-${index}.jpg`,
     mimeType: 'image/webp',
-    blurhash: 'LEHV6nWB2yk8pyo0adR*.7kCMdnj',
+    thumbhash: 'abc123thumbhashbase64==',
   };
 }
 

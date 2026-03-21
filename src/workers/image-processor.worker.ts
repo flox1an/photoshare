@@ -6,7 +6,7 @@
  * Pipeline: HEIC detect → optional heicTo conversion → createImageBitmap →
  *   pass 1: full-size OffscreenCanvas WebP (2560px, q=0.85) →
  *   pass 2: thumbnail OffscreenCanvas WebP (512px, q=0.75) →
- *   pass 3: blurhash from 32×32 downsample →
+ *   pass 3: thumbhash from 100×100 downsample →
  *   bitmap.close() (CRITICAL: explicit GPU memory release) →
  *   return ProcessedPhoto
  *
@@ -16,7 +16,7 @@
  */
 import * as Comlink from 'comlink';
 import { heicTo } from 'heic-to/next';
-import { encode as blurhashEncode } from 'blurhash';
+import { rgbaToThumbHash } from 'thumbhash';
 import { fitToLongEdge } from '@/lib/image/dimensions';
 import type { ProcessedPhoto, ProcessorApi } from '@/types/processing';
 
@@ -68,19 +68,21 @@ const api: ProcessorApi = {
     const { w: thumbW, h: thumbH } = fitToLongEdge(origW, origH, 512);
     const { buffer: thumbBuffer } = await encodeCanvas(bitmap, thumbW, thumbH, 0.75);
 
-    // Step 5: BlurHash — compute from a 32×32 downsample for speed (O(1024) vs O(262144))
-    let blurhash = '';
+    // Step 5: ThumbHash — compute from a 100×100 downsample for better color accuracy
+    let thumbhash = '';
     try {
-      const bhSize = 32;
-      const bhCanvas = new OffscreenCanvas(bhSize, bhSize);
-      const bhCtx = bhCanvas.getContext('2d');
-      if (bhCtx) {
-        bhCtx.drawImage(bitmap, 0, 0, bhSize, bhSize);
-        const { data } = bhCtx.getImageData(0, 0, bhSize, bhSize);
-        blurhash = blurhashEncode(data, bhSize, bhSize, 4, 3);
+      const thSize = 100;
+      const thCanvas = new OffscreenCanvas(thSize, thSize);
+      const thCtx = thCanvas.getContext('2d');
+      if (thCtx) {
+        thCtx.drawImage(bitmap, 0, 0, thSize, thSize);
+        const { data } = thCtx.getImageData(0, 0, thSize, thSize);
+        const hash = rgbaToThumbHash(thSize, thSize, data);
+        // Store as base64 string for JSON serialization in the album manifest
+        thumbhash = btoa(String.fromCharCode(...hash));
       }
     } catch {
-      // BlurHash failure is non-fatal — viewer falls back to skeleton
+      // ThumbHash failure is non-fatal — viewer falls back to skeleton
     }
 
     // Step 6: CRITICAL — explicit GPU memory release. GC alone is too slow for 200-photo batches.
@@ -94,7 +96,7 @@ const api: ProcessorApi = {
       height: origH,
       filename: file.name.replace(/\.[^.]+$/, '.webp'),
       mimeType,       // 'image/webp' normally, 'image/png' on Safari (accepted for v1)
-      blurhash,
+      thumbhash,
     };
   },
 };

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { PhotoEntry } from "@/types/album";
 import SkeletonCard from "./SkeletonCard";
-import BlurhashCanvas from "./BlurhashCanvas";
+import ThumbhashCanvas from "./ThumbhashCanvas";
 
 function useColumnCount() {
   // Match the breakpoints: default 2, sm(640) 3, lg(1024) 4
@@ -128,9 +128,9 @@ export default function ThumbnailGrid({
                       </span>
                     </div>
                   </div>
-                ) : photo.blurhash ? (
-                  <BlurhashCanvas
-                    hash={photo.blurhash}
+                ) : photo.thumbhash ? (
+                  <ThumbhashCanvas
+                    hash={photo.thumbhash}
                     aspectRatio={`${photo.width}/${photo.height}`}
                   />
                 ) : (
