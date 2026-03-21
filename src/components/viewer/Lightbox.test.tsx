@@ -40,7 +40,7 @@ const defaultProps = {
   thumbUrls: {},
   fullUrls: {},
   albumKey: null,
-  blossomServer: "https://blossom.example.com",
+  resolvedServer: "https://blossom.example.com",
   onNext: vi.fn(),
   onPrev: vi.fn(),
   onClose: vi.fn(),

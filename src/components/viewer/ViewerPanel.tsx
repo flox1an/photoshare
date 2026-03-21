@@ -7,11 +7,11 @@ import Lightbox from "./Lightbox";
 import DownloadProgress from "./DownloadProgress";
 
 interface Props {
-  naddr: string;
+  hash: string;
 }
 
-export default function ViewerPanel({ naddr }: Props) {
-  const viewer = useAlbumViewer({ naddr });
+export default function ViewerPanel({ hash }: Props) {
+  const viewer = useAlbumViewer({ hash });
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const preloadAdjacent = useCallback(
@@ -38,7 +38,7 @@ export default function ViewerPanel({ naddr }: Props) {
       await viewer.downloadAll(
         viewer.manifest.photos,
         viewer.albumKey,
-        viewer.blossomServer,
+        viewer.resolvedServer ?? '',
       );
     } catch (err) {
       alert(`Download failed: ${err instanceof Error ? err.message : "Unknown error"}`);
@@ -51,7 +51,7 @@ export default function ViewerPanel({ naddr }: Props) {
       const photo = viewer.manifest.photos[index];
       if (!photo) return;
       try {
-        await viewer.downloadSingle(photo, viewer.albumKey, viewer.blossomServer);
+        await viewer.downloadSingle(photo, viewer.albumKey, viewer.resolvedServer ?? '');
       } catch (err) {
         alert(`Download failed: ${err instanceof Error ? err.message : "Unknown error"}`);
       }
@@ -139,7 +139,7 @@ export default function ViewerPanel({ naddr }: Props) {
           thumbUrls={viewer.thumbUrls}
           fullUrls={viewer.fullUrls}
           albumKey={viewer.albumKey}
-          blossomServer={viewer.blossomServer}
+          resolvedServer={viewer.resolvedServer ?? ''}
           onNext={() => {
             setLightboxIndex((i) => {
               const next = Math.min(i! + 1, manifest.photos.length - 1);

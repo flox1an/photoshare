@@ -9,10 +9,10 @@ const ViewerPanel = dynamic(
 );
 
 interface Props {
-  params: Promise<{ naddr: string }>;
+  params: Promise<{ hash: string }>;
 }
 
 export default function ViewerPage({ params }: Props) {
-  const { naddr } = use(params);
-  return <ViewerPanel naddr={naddr} />;
+  const { hash } = use(params);
+  return <ViewerPanel hash={hash} />;
 }

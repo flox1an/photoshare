@@ -10,7 +10,7 @@ interface LightboxProps {
   thumbUrls: Record<string, string>;
   fullUrls: Record<string, string>;
   albumKey: CryptoKey | null;
-  blossomServer: string;
+  resolvedServer: string;
   onNext: () => void;
   onPrev: () => void;
   onClose: () => void;
