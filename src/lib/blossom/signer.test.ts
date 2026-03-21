@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createEphemeralSigner, getSignerPubkey } from "@/lib/nostr/signer";
+import { createEphemeralSigner, getSignerPubkey } from "@/lib/blossom/signer";
 import { encodeAlbumNaddr, decodeAlbumNaddr } from "@/lib/nostr/naddr";
 
 describe("createEphemeralSigner (UPLD-04)", () => {

@@ -33,7 +33,7 @@ import {
   exportKeyToBase64url,
   uint8ArrayToBase64url,
 } from '@/lib/crypto';
-import { createEphemeralSigner, getSignerPubkey } from '@/lib/nostr/signer';
+import { createEphemeralSigner, getSignerPubkey } from '@/lib/blossom/signer';
 import { sha256Hex, buildBlossomUploadAuth, uploadBlob } from '@/lib/blossom/upload';
 import { buildAlbumEvent } from '@/lib/nostr/event';
 import { encodeAlbumNaddr } from '@/lib/nostr/naddr';
