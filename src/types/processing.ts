@@ -37,6 +37,8 @@ export interface ProcessedPhoto {
   filename: string;
   /** Actual MIME type of the output — 'image/webp' normally, 'image/png' on Safari fallback */
   mimeType: string;
+  /** BlurHash string for placeholder preview (4×3 components computed from 32×32 downsample) */
+  blurhash: string;
 }
 
 /**

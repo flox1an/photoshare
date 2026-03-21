@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useUploadStore } from '@/store/uploadStore';
 
 interface ShareCardProps {
   shareLink: string | null;
@@ -19,6 +20,11 @@ interface ShareCardProps {
  */
 export function ShareCard({ shareLink, isUploading, publishError }: ShareCardProps) {
   const [copied, setCopied] = useState(false);
+  const uploadPhotos = useUploadStore((state) => state.photos);
+  const uploadEntries = Object.values(uploadPhotos);
+  const total = uploadEntries.length;
+  const done = uploadEntries.filter((p) => p.status === 'done').length;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
   // Nothing to show yet — return null so the card doesn't appear prematurely
   if (!isUploading && !shareLink && !publishError) return null;
@@ -36,11 +42,19 @@ export function ShareCard({ shareLink, isUploading, publishError }: ShareCardPro
 
   return (
     <div className="mt-5 rounded-lg border border-zinc-800 bg-zinc-900/50 p-5">
-      {/* Publishing spinner — shown while relay publish is in-flight */}
+      {/* Upload progress bar — shown while upload is in-flight */}
       {isUploading && !shareLink && (
-        <div className="flex items-center gap-3">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-600 border-t-zinc-300" />
-          <span className="text-sm text-zinc-400">Uploading...</span>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs text-zinc-500">
+            <span>Uploading…</span>
+            <span>{done}/{total}</span>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
+            <div
+              className="h-full rounded-full bg-zinc-300 transition-all duration-300"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
         </div>
       )}
 

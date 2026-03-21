@@ -24,6 +24,8 @@ export function useImageProcessor() {
   // Concurrency limit: 4 in-flight worker calls max
   // 4 × ~36 MB (12 MP bitmap) = ~144 MB peak GPU memory — safe within Chrome tab limits
   const limitRef = useRef(pLimit(4));
+  // Maps photo store ID → original File object (lazy — bytes not loaded until upload)
+  const fileMapRef = useRef<Map<string, File>>(new Map());
 
   const { addPhotos, setProcessing, setResult, setError, photos } = useProcessingStore();
 
@@ -55,6 +57,8 @@ export function useImageProcessor() {
         return;
       }
       const ids = addPhotos(files);
+      // Track original File objects for optional keepOriginals upload
+      files.forEach((file, i) => fileMapRef.current.set(ids[i], file));
       const proxy = proxyRef.current;
       const limit = limitRef.current;
 
@@ -81,5 +85,5 @@ export function useImageProcessor() {
     (p) => p.status === 'pending' || p.status === 'processing',
   );
 
-  return { processBatch, photos, isProcessing };
+  return { processBatch, photos, isProcessing, fileMap: fileMapRef.current };
 }

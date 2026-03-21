@@ -8,8 +8,12 @@ export interface PhotoEntry {
   width: number;
   /** Original image height in pixels */
   height: number;
-  /** Original filename (e.g. IMG_2847.jpg) used for download naming */
+  /** Display filename — original filename (e.g. IMG_2847.HEIC) when origHash is set, otherwise the webp filename (e.g. IMG_2847.webp) */
   filename: string;
+  /** BlurHash string for blurred placeholder preview before thumbnail loads */
+  blurhash?: string;
+  /** SHA-256 hash of the encrypted original file blob — present when album was created with keepOriginals */
+  origHash?: string;
 }
 
 /** Album manifest — serialized to JSON, encrypted, uploaded to Blossom as a blob */

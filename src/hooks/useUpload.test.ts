@@ -63,6 +63,7 @@ function makePhoto(index = 0) {
     height: 1080,
     filename: `photo-${index}.jpg`,
     mimeType: 'image/webp',
+    blurhash: 'LEHV6nWB2yk8pyo0adR*.7kCMdnj',
   };
 }
 
@@ -115,7 +116,7 @@ describe('useUpload — Blossom-only manifest upload', () => {
     const { result } = renderHook(() => useUpload());
 
     await act(async () => {
-      await result.current.startUpload([makePhoto(0)], { blossomServer: BLOSSOM_SERVER });
+      await result.current.startUpload([makePhoto(0)], { blossomServers: [BLOSSOM_SERVER] });
     });
 
     // 2 calls per photo: full + thumb
@@ -128,7 +129,7 @@ describe('useUpload — Blossom-only manifest upload', () => {
     const { result } = renderHook(() => useUpload());
 
     await act(async () => {
-      await result.current.startUpload([makePhoto(0)], { blossomServer: BLOSSOM_SERVER });
+      await result.current.startUpload([makePhoto(0)], { blossomServers: [BLOSSOM_SERVER] });
     });
 
     // 3 calls: full hash, thumb hash, manifest hash
@@ -167,7 +168,7 @@ describe('useUpload — Blossom-only manifest upload', () => {
     const { result } = renderHook(() => useUpload());
 
     await act(async () => {
-      await result.current.startUpload([makePhoto(0), makePhoto(1)], { blossomServer: BLOSSOM_SERVER });
+      await result.current.startUpload([makePhoto(0), makePhoto(1)], { blossomServers: [BLOSSOM_SERVER] });
     });
 
     // 2 photos × 2 blobs each + 1 manifest = 5 upload calls
@@ -175,18 +176,22 @@ describe('useUpload — Blossom-only manifest upload', () => {
     expect(result.current.shareLink).not.toBeNull();
   });
 
-  it('generates share URL with manifest hash, xs param, and key fragment', async () => {
+  it('generates an opaque share URL (pathToken + key fragment)', async () => {
     setupHappyPath();
 
     const { result } = renderHook(() => useUpload());
 
     await act(async () => {
-      await result.current.startUpload([makePhoto(0)], { blossomServer: BLOSSOM_SERVER });
+      await result.current.startUpload([makePhoto(0)], { blossomServers: [BLOSSOM_SERVER] });
     });
 
-    expect(result.current.shareLink).toBe(
-      `/${MANIFEST_HASH}?xs=blossom.example.com#mock-key-b64url`,
-    );
+    const link = result.current.shareLink;
+    expect(link).not.toBeNull();
+    // New format: /{pathToken}#{keyB64url} — no hex hash or xs param visible
+    expect(link).toMatch(/^\/[A-Za-z0-9_-]+#mock-key-b64url$/);
+    // Must not contain the raw manifest hash or server domain
+    expect(link).not.toContain(MANIFEST_HASH);
+    expect(link).not.toContain('blossom.example.com');
   });
 
   it('sets publishError when a photo upload fails after 3 retries', async () => {
@@ -198,7 +203,7 @@ describe('useUpload — Blossom-only manifest upload', () => {
     const { result } = renderHook(() => useUpload());
 
     await act(async () => {
-      await result.current.startUpload([makePhoto(0)], { blossomServer: BLOSSOM_SERVER });
+      await result.current.startUpload([makePhoto(0)], { blossomServers: [BLOSSOM_SERVER] });
     });
 
     expect(result.current.publishError).toBe(
@@ -214,7 +219,7 @@ describe('useUpload — Blossom-only manifest upload', () => {
     const { result } = renderHook(() => useUpload());
 
     await act(async () => {
-      await result.current.startUpload([makePhoto(0)], { blossomServer: BLOSSOM_SERVER });
+      await result.current.startUpload([makePhoto(0)], { blossomServers: [BLOSSOM_SERVER] });
     });
 
     // manifest should never be encrypted or uploaded

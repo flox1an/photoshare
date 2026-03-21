@@ -157,7 +157,7 @@ describe("useAlbumViewer", () => {
       });
 
       expect(mockImportKeyFromBase64url).toHaveBeenCalledWith("dGVzdGtleQ");
-      expect(mockResolveAndFetch).toHaveBeenCalledWith("a".repeat(64), undefined);
+      expect(mockResolveAndFetch).toHaveBeenCalledWith("a".repeat(64), []);
       expect(result.current.manifest).toEqual(sampleManifest);
       expect(result.current.resolvedServer).toBe("https://blossom.example.com");
       expect(result.current.albumKey).not.toBeNull();
@@ -188,7 +188,7 @@ describe("useAlbumViewer", () => {
         expect(result.current.status).toBe("ready");
       });
 
-      expect(mockResolveAndFetch).toHaveBeenCalledWith("a".repeat(64), "myblossom.example.com");
+      expect(mockResolveAndFetch).toHaveBeenCalledWith("a".repeat(64), ["myblossom.example.com"]);
     });
   });
 
@@ -245,7 +245,7 @@ describe("useAlbumViewer", () => {
         await result.current.downloadSingle(samplePhotos[0], fakeKey, "https://blossom.example.com");
       });
 
-      expect(mockResolveAndFetch).toHaveBeenCalledWith("a".repeat(64), undefined);
+      expect(mockResolveAndFetch).toHaveBeenCalledWith("a".repeat(64), []);
       expect(mockClick).toHaveBeenCalledOnce();
 
       cleanupDownloadMocks();

@@ -6,20 +6,26 @@ export interface ResolveResult {
 }
 
 /**
- * Fetch a blob by SHA-256 hash, trying xs hint first then fallback servers.
+ * Fetch a blob by SHA-256 hash, trying hinted servers first then fallback servers.
  *
  * @param hash - 64-char lowercase hex SHA-256 of the blob
- * @param xsHint - Optional domain hint (https assumed, no protocol prefix)
+ * @param serverHints - Ordered list of server URLs to try first (full https:// URLs or bare domains)
  * @returns The blob data and which server it came from
  * @throws Error if blob not found on any server
  */
 export async function resolveAndFetch(
   hash: string,
-  xsHint?: string,
+  serverHints: string[] = [],
 ): Promise<ResolveResult> {
-  const servers = xsHint
-    ? [`https://${xsHint}`, ...DEFAULT_BLOSSOM_SERVERS.filter((s) => s !== `https://${xsHint}`)]
-    : DEFAULT_BLOSSOM_SERVERS;
+  // Normalise hints to full https:// URLs
+  const hintUrls = serverHints.map((s) =>
+    s.startsWith('http') ? s.replace(/\/$/, '') : `https://${s}`,
+  );
+  const hintSet = new Set(hintUrls);
+  const servers = [
+    ...hintUrls,
+    ...DEFAULT_BLOSSOM_SERVERS.filter((s) => !hintSet.has(s)),
+  ];
 
   for (const server of servers) {
     try {

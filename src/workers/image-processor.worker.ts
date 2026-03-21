@@ -5,7 +5,8 @@
  *
  * Pipeline: HEIC detect → optional heicTo conversion → createImageBitmap →
  *   pass 1: full-size OffscreenCanvas WebP (2560px, q=0.85) →
- *   pass 2: thumbnail OffscreenCanvas WebP (300px, q=0.75) →
+ *   pass 2: thumbnail OffscreenCanvas WebP (512px, q=0.75) →
+ *   pass 3: blurhash from 32×32 downsample →
  *   bitmap.close() (CRITICAL: explicit GPU memory release) →
  *   return ProcessedPhoto
  *
@@ -15,6 +16,7 @@
  */
 import * as Comlink from 'comlink';
 import { heicTo } from 'heic-to/next';
+import { encode as blurhashEncode } from 'blurhash';
 import { fitToLongEdge } from '@/lib/image/dimensions';
 import type { ProcessedPhoto, ProcessorApi } from '@/types/processing';
 
@@ -62,11 +64,26 @@ const api: ProcessorApi = {
     const { w: fullW, h: fullH } = fitToLongEdge(origW, origH, 2560);
     const { buffer: fullBuffer, mimeType } = await encodeCanvas(bitmap, fullW, fullH, 0.85);
 
-    // Step 4: Thumbnail pass (max 300px long edge, quality 0.75)
-    const { w: thumbW, h: thumbH } = fitToLongEdge(origW, origH, 300);
+    // Step 4: Thumbnail pass (max 512px long edge, quality 0.75)
+    const { w: thumbW, h: thumbH } = fitToLongEdge(origW, origH, 512);
     const { buffer: thumbBuffer } = await encodeCanvas(bitmap, thumbW, thumbH, 0.75);
 
-    // Step 5: CRITICAL — explicit GPU memory release. GC alone is too slow for 200-photo batches.
+    // Step 5: BlurHash — compute from a 32×32 downsample for speed (O(1024) vs O(262144))
+    let blurhash = '';
+    try {
+      const bhSize = 32;
+      const bhCanvas = new OffscreenCanvas(bhSize, bhSize);
+      const bhCtx = bhCanvas.getContext('2d');
+      if (bhCtx) {
+        bhCtx.drawImage(bitmap, 0, 0, bhSize, bhSize);
+        const { data } = bhCtx.getImageData(0, 0, bhSize, bhSize);
+        blurhash = blurhashEncode(data, bhSize, bhSize, 4, 3);
+      }
+    } catch {
+      // BlurHash failure is non-fatal — viewer falls back to skeleton
+    }
+
+    // Step 6: CRITICAL — explicit GPU memory release. GC alone is too slow for 200-photo batches.
     // Each 12 MP bitmap = ~36 MB GPU memory. Without close(), tab crashes ~photo 50-80.
     bitmap.close();
 
@@ -77,6 +94,7 @@ const api: ProcessorApi = {
       height: origH,
       filename: file.name.replace(/\.[^.]+$/, '.webp'),
       mimeType,       // 'image/webp' normally, 'image/png' on Safari (accepted for v1)
+      blurhash,
     };
   },
 };

@@ -9,20 +9,20 @@ beforeEach(() => {
 });
 
 describe("resolveAndFetch", () => {
-  it("fetches from xs hint first when provided", async () => {
+  it("fetches from server hint first when provided", async () => {
     const mockData = new ArrayBuffer(10);
     mockFetch.mockResolvedValueOnce({
       ok: true,
       arrayBuffer: () => Promise.resolve(mockData),
     });
 
-    const result = await resolveAndFetch("abc123", "myserver.com");
+    const result = await resolveAndFetch("abc123", ["https://myserver.com"]);
     expect(mockFetch).toHaveBeenCalledWith("https://myserver.com/abc123");
     expect(result.data).toBe(mockData);
     expect(result.server).toBe("https://myserver.com");
   });
 
-  it("falls back to DEFAULT_BLOSSOM_SERVERS when xs hint fails", async () => {
+  it("falls back to DEFAULT_BLOSSOM_SERVERS when hint server fails", async () => {
     const mockData = new ArrayBuffer(10);
     mockFetch
       .mockResolvedValueOnce({ ok: false })
@@ -31,7 +31,7 @@ describe("resolveAndFetch", () => {
         arrayBuffer: () => Promise.resolve(mockData),
       });
 
-    const result = await resolveAndFetch("abc123", "down.server.com");
+    const result = await resolveAndFetch("abc123", ["https://down.server.com"]);
     expect(mockFetch).toHaveBeenCalledTimes(2);
     expect(result.data).toBe(mockData);
   });

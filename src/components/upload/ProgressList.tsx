@@ -12,15 +12,22 @@ export function ProgressList() {
 
   if (entries.length === 0) return null;
 
-  const done = entries.filter((p) => p.status === 'done').length;
-  const errors = entries.filter((p) => p.status === 'error').length;
+  const isUploadPhase = Object.keys(uploadPhotos).length > 0;
+  const done = entries.filter((p) => {
+    const s = uploadPhotos[p.id]?.status ?? p.status;
+    return s === 'done';
+  }).length;
+  const errors = entries.filter((p) => {
+    const s = uploadPhotos[p.id]?.status ?? p.status;
+    return s === 'error';
+  }).length;
   const total = entries.length;
 
   return (
     <div className="mt-5 w-full">
       <div className="mb-2 flex items-center justify-between text-xs text-zinc-500">
         <span>
-          {done}/{total} processed
+          {done}/{total} {isUploadPhase ? 'uploaded' : 'processed'}
           {errors > 0 && <span className="ml-2 text-red-400">{errors} failed</span>}
         </span>
         {done === total && total > 0 && (

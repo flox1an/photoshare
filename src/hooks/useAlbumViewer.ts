@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import JSZip from 'jszip';
 import { decryptBlob, importKeyFromBase64url } from '@/lib/crypto';
 import { resolveAndFetch } from '@/lib/blossom/resolve';
+import { isLegacyToken, decodePathToken, hashBytesToHex } from '@/lib/shareToken';
 import { decryptAndValidateManifest } from '@/lib/blossom/manifest';
 import type { AlbumManifest, PhotoEntry } from '@/types/album';
 
@@ -60,15 +61,29 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
           throw new Error('Missing decryption key in URL fragment');
         }
 
-        // 2. Extract xs hint from query params
-        const params = new URLSearchParams(window.location.search);
-        const xsHint = params.get('xs') ?? undefined;
+        // 2. Decode path token → manifest hash + server hints
+        //    Supports both new opaque tokens and legacy 64-char hex hashes
+        let manifestHash: string;
+        let serverHints: string[];
+
+        if (isLegacyToken(opts!.hash!)) {
+          // Legacy URL: /{hex64}?xs={domain}#{key}
+          manifestHash = opts!.hash!;
+          const params = new URLSearchParams(window.location.search);
+          const xsHint = params.get('xs');
+          serverHints = xsHint ? [xsHint] : [];
+        } else {
+          // New opaque URL: /{pathToken}#{key}
+          const { hashBytes, servers } = decodePathToken(opts!.hash!);
+          manifestHash = hashBytesToHex(hashBytes);
+          serverHints = servers;
+        }
 
         // 3. Import AES key
         const key = await importKeyFromBase64url(keyB64url);
 
         // 4. Fetch manifest from Blossom
-        const { data, server } = await resolveAndFetch(opts!.hash!, xsHint);
+        const { data, server } = await resolveAndFetch(manifestHash, serverHints);
 
         if (cancelled) return;
 
@@ -121,10 +136,8 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
   /** Fetch and decrypt a blob, trying resolvedServer first then fallback */
   const fetchAndDecrypt = useCallback(
     async (hash: string, key: CryptoKey): Promise<ArrayBuffer> => {
-      const xsHint = resolvedServer
-        ? resolvedServer.replace(/^https?:\/\//, '').replace(/\/$/, '')
-        : undefined;
-      const { data } = await resolveAndFetch(hash, xsHint);
+      const hints = resolvedServer ? [resolvedServer] : [];
+      const { data } = await resolveAndFetch(hash, hints);
       return decryptBlob(new Uint8Array(data), key);
     },
     [resolvedServer],
@@ -132,8 +145,10 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
 
   const downloadSingle = useCallback(
     async (photo: PhotoEntry, key: CryptoKey, _server: string): Promise<void> => {
-      const plaintext = await fetchAndDecrypt(photo.hash, key);
-      triggerDownload(new Blob([plaintext]), photo.filename);
+      const hashToFetch = photo.origHash ?? photo.hash;
+      const filename = photo.filename;
+      const plaintext = await fetchAndDecrypt(hashToFetch, key);
+      triggerDownload(new Blob([plaintext]), filename);
     },
     [fetchAndDecrypt, triggerDownload],
   );
@@ -151,8 +166,11 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
       if (isIOS) {
         const zip = new JSZip();
         for (let i = 0; i < photos.length; i++) {
-          const plaintext = await fetchAndDecrypt(photos[i].hash, key);
-          zip.file(photos[i].filename, plaintext);
+          const photo = photos[i];
+          const hashToFetch = photo.origHash ?? photo.hash;
+          const filename = photo.filename;
+          const plaintext = await fetchAndDecrypt(hashToFetch, key);
+          zip.file(filename, plaintext);
           const current = i + 1;
           if (onProgress) onProgress(current, total);
           setDownloadProgress({ current, total });
@@ -161,8 +179,11 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
         triggerDownload(zipBlob, 'album.zip');
       } else {
         for (let i = 0; i < photos.length; i++) {
-          const plaintext = await fetchAndDecrypt(photos[i].hash, key);
-          triggerDownload(new Blob([plaintext]), photos[i].filename);
+          const photo = photos[i];
+          const hashToFetch = photo.origHash ?? photo.hash;
+          const filename = photo.filename;
+          const plaintext = await fetchAndDecrypt(hashToFetch, key);
+          triggerDownload(new Blob([plaintext]), filename);
           const current = i + 1;
           if (onProgress) onProgress(current, total);
           setDownloadProgress({ current, total });
