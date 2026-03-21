@@ -1,10 +1,10 @@
+'use client';
+
 import { useState, useCallback, useEffect, useRef } from 'react';
 import JSZip from 'jszip';
-import { fetchBlob } from '@/lib/blossom/fetch';
-import { decryptBlob, base64urlToUint8Array, importKeyFromBase64url } from '@/lib/crypto';
-import { decodeAlbumNaddr } from '@/lib/nostr/naddr';
-import { loadAlbumEvent, decryptManifest } from '@/lib/nostr/viewer';
-import { DEFAULT_BLOSSOM_SERVER } from '@/lib/config';
+import { decryptBlob, importKeyFromBase64url } from '@/lib/crypto';
+import { resolveAndFetch } from '@/lib/blossom/resolve';
+import { decryptAndValidateManifest } from '@/lib/blossom/manifest';
 import type { AlbumManifest, PhotoEntry } from '@/types/album';
 
 export interface DownloadProgress {
@@ -19,7 +19,7 @@ export interface AlbumViewerState {
   thumbUrls: Record<string, string>;
   fullUrls: Record<string, string>;
   albumKey: CryptoKey | null;
-  blossomServer: string;
+  resolvedServer: string | null;
   downloadProgress: DownloadProgress | null;
   downloadAll: (
     photos: PhotoEntry[],
@@ -36,65 +36,53 @@ export interface AlbumViewerState {
   loadFullImage: (index: number) => void;
 }
 
-/**
- * Central data orchestration hook for the album viewer.
- *
- * Provides:
- * - State machine: loading → ready | error
- * - Lazy thumbnail loading via loadThumbnail(index) — called by IntersectionObserver
- * - On-demand full-image loading via loadFullImage(index) — called by Lightbox on open
- * - downloadAll: fetches all full-size blobs, decrypts, creates ZIP download
- *
- * Object URL memory rule: ALL URLs created are tracked in a ref and revoked on unmount.
- *
- * CRITICAL: window.location.hash is only accessed inside useEffect — never in render body.
- */
-export function useAlbumViewer(opts?: { naddr?: string }): AlbumViewerState {
+export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
   const [manifest, setManifest] = useState<AlbumManifest | null>(null);
   const [thumbUrls, setThumbUrls] = useState<Record<string, string>>({});
   const [fullUrls, setFullUrls] = useState<Record<string, string>>({});
   const [albumKey, setAlbumKey] = useState<CryptoKey | null>(null);
-  const [blossomServer, setBlossomServer] = useState<string>('');
+  const [resolvedServer, setResolvedServer] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
 
-  // Track all created object URLs for reliable cleanup on unmount
   const createdUrlsRef = useRef<string[]>([]);
 
-  // Decode naddr → fetch event from relays → decrypt manifest
   useEffect(() => {
-    if (!opts?.naddr) return;
+    if (!opts?.hash) return;
     let cancelled = false;
 
     async function init() {
       try {
-        // 1. Extract key from URL fragment (never sent to server)
-        const hash = window.location.hash.slice(1); // remove leading '#'
-        if (!hash) {
+        // 1. Extract key from fragment
+        const keyB64url = window.location.hash.slice(1);
+        if (!keyB64url) {
           throw new Error('Missing decryption key in URL fragment');
         }
 
-        // 2. Decode naddr to get relay hints + event coordinates
-        const pointer = decodeAlbumNaddr(opts!.naddr!);
+        // 2. Extract xs hint from query params
+        const params = new URLSearchParams(window.location.search);
+        const xsHint = params.get('xs') ?? undefined;
 
-        // 3. Import the AES-256-GCM key from base64url
-        const key = await importKeyFromBase64url(hash);
+        // 3. Import AES key
+        const key = await importKeyFromBase64url(keyB64url);
 
-        // 4. Fetch the kind 30078 event from relays (WebSocket connection happens here)
-        const event = await loadAlbumEvent(pointer);
-
-        if (cancelled) return;
-
-        // 5. Decrypt the album manifest
-        const albumManifest = await decryptManifest(event, key);
+        // 4. Fetch manifest from Blossom
+        const { data, server } = await resolveAndFetch(opts!.hash!, xsHint);
 
         if (cancelled) return;
 
-        // 6. Set all state — transition to ready
+        // 5. Decrypt and validate manifest
+        const albumManifest = await decryptAndValidateManifest(
+          new Uint8Array(data),
+          key,
+        );
+
+        if (cancelled) return;
+
         setAlbumKey(key);
         setManifest(albumManifest);
-        setBlossomServer(DEFAULT_BLOSSOM_SERVER);
+        setResolvedServer(server);
         setStatus('ready');
       } catch (err) {
         if (cancelled) return;
@@ -105,9 +93,8 @@ export function useAlbumViewer(opts?: { naddr?: string }): AlbumViewerState {
 
     void init();
     return () => { cancelled = true; };
-  }, [opts?.naddr]);
+  }, [opts?.hash]);
 
-  // Cleanup object URLs on unmount
   useEffect(() => {
     const urls = createdUrlsRef.current;
     return () => {
@@ -117,11 +104,9 @@ export function useAlbumViewer(opts?: { naddr?: string }): AlbumViewerState {
     };
   }, []);
 
-  /** Detect iOS (Safari on iPhone/iPad) where multi-file download is not supported. */
   const isIOS = typeof navigator !== 'undefined' &&
     /iPad|iPhone|iPod/.test(navigator.userAgent);
 
-  /** Trigger a single-file browser download via a temporary <a> element. */
   const triggerDownload = useCallback((blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -133,45 +118,41 @@ export function useAlbumViewer(opts?: { naddr?: string }): AlbumViewerState {
     URL.revokeObjectURL(url);
   }, []);
 
-  /**
-   * Download a single photo: fetch, decrypt, and trigger browser download.
-   */
-  const downloadSingle = useCallback(
-    async (photo: PhotoEntry, key: CryptoKey, server: string): Promise<void> => {
-      const ciphertext = await fetchBlob(server, photo.hash);
-      const iv = base64urlToUint8Array(photo.iv);
-      const plaintext = await decryptBlob(ciphertext, key, iv);
-      triggerDownload(new Blob([plaintext]), photo.filename);
+  /** Fetch and decrypt a blob, trying resolvedServer first then fallback */
+  const fetchAndDecrypt = useCallback(
+    async (hash: string, key: CryptoKey): Promise<ArrayBuffer> => {
+      const xsHint = resolvedServer
+        ? resolvedServer.replace(/^https?:\/\//, '').replace(/\/$/, '')
+        : undefined;
+      const { data } = await resolveAndFetch(hash, xsHint);
+      return decryptBlob(new Uint8Array(data), key);
     },
-    [triggerDownload],
+    [resolvedServer],
   );
 
-  /**
-   * Download all photos.
-   *
-   * On iOS: falls back to ZIP (single file download) since multi-file is unsupported.
-   * On desktop: downloads each file individually.
-   * Calls onProgress(current, total) after each photo completes.
-   */
+  const downloadSingle = useCallback(
+    async (photo: PhotoEntry, key: CryptoKey, _server: string): Promise<void> => {
+      const plaintext = await fetchAndDecrypt(photo.hash, key);
+      triggerDownload(new Blob([plaintext]), photo.filename);
+    },
+    [fetchAndDecrypt, triggerDownload],
+  );
+
   const downloadAll = useCallback(
     async (
       photos: PhotoEntry[],
       key: CryptoKey,
-      server: string,
+      _server: string,
       onProgress?: (current: number, total: number) => void,
     ): Promise<void> => {
       const total = photos.length;
       setDownloadProgress({ current: 0, total });
 
       if (isIOS) {
-        // iOS: ZIP fallback — single file download is the only reliable path
         const zip = new JSZip();
         for (let i = 0; i < photos.length; i++) {
-          const photo = photos[i];
-          const ciphertext = await fetchBlob(server, photo.hash);
-          const iv = base64urlToUint8Array(photo.iv);
-          const plaintext = await decryptBlob(ciphertext, key, iv);
-          zip.file(photo.filename, plaintext);
+          const plaintext = await fetchAndDecrypt(photos[i].hash, key);
+          zip.file(photos[i].filename, plaintext);
           const current = i + 1;
           if (onProgress) onProgress(current, total);
           setDownloadProgress({ current, total });
@@ -179,13 +160,9 @@ export function useAlbumViewer(opts?: { naddr?: string }): AlbumViewerState {
         const zipBlob = await zip.generateAsync({ type: 'blob' });
         triggerDownload(zipBlob, 'album.zip');
       } else {
-        // Desktop: download individual files
         for (let i = 0; i < photos.length; i++) {
-          const photo = photos[i];
-          const ciphertext = await fetchBlob(server, photo.hash);
-          const iv = base64urlToUint8Array(photo.iv);
-          const plaintext = await decryptBlob(ciphertext, key, iv);
-          triggerDownload(new Blob([plaintext]), photo.filename);
+          const plaintext = await fetchAndDecrypt(photos[i].hash, key);
+          triggerDownload(new Blob([plaintext]), photos[i].filename);
           const current = i + 1;
           if (onProgress) onProgress(current, total);
           setDownloadProgress({ current, total });
@@ -194,14 +171,9 @@ export function useAlbumViewer(opts?: { naddr?: string }): AlbumViewerState {
 
       setDownloadProgress(null);
     },
-    [isIOS, triggerDownload],
+    [isIOS, fetchAndDecrypt, triggerDownload],
   );
 
-  /**
-   * Load a thumbnail at the given index.
-   * Called by ThumbnailGrid IntersectionObserver when a thumbnail enters the viewport.
-   * No-op if albumKey or manifest is not yet available, or URL already exists.
-   */
   const loadThumbnail = useCallback(
     (index: number) => {
       if (!albumKey || !manifest) return;
@@ -211,26 +183,20 @@ export function useAlbumViewer(opts?: { naddr?: string }): AlbumViewerState {
 
       void (async () => {
         try {
-          const ciphertext = await fetchBlob(blossomServer, photo.thumbHash);
-          const iv = base64urlToUint8Array(photo.thumbIv);
-          const plaintext = await decryptBlob(ciphertext, albumKey, iv);
+          const plaintext = await fetchAndDecrypt(photo.thumbHash, albumKey);
           const objectUrl = URL.createObjectURL(
             new Blob([plaintext], { type: 'image/webp' }),
           );
           createdUrlsRef.current.push(objectUrl);
           setThumbUrls(prev => ({ ...prev, [photo.thumbHash]: objectUrl }));
         } catch {
-          // Thumbnail load failure is non-fatal — silently skip
+          // Thumbnail load failure is non-fatal
         }
       })();
     },
-    [albumKey, manifest, thumbUrls, blossomServer],
+    [albumKey, manifest, thumbUrls, fetchAndDecrypt],
   );
 
-  /**
-   * Load a full-size image at the given index.
-   * Called by Lightbox on open. No-op if already loaded.
-   */
   const loadFullImage = useCallback(
     (index: number) => {
       if (!albumKey || !manifest) return;
@@ -240,20 +206,18 @@ export function useAlbumViewer(opts?: { naddr?: string }): AlbumViewerState {
 
       void (async () => {
         try {
-          const ciphertext = await fetchBlob(blossomServer, photo.hash);
-          const iv = base64urlToUint8Array(photo.iv);
-          const plaintext = await decryptBlob(ciphertext, albumKey, iv);
+          const plaintext = await fetchAndDecrypt(photo.hash, albumKey);
           const objectUrl = URL.createObjectURL(
             new Blob([plaintext], { type: 'image/webp' }),
           );
           createdUrlsRef.current.push(objectUrl);
           setFullUrls(prev => ({ ...prev, [photo.hash]: objectUrl }));
         } catch {
-          // Full image load failure is non-fatal — silently skip
+          // Full image load failure is non-fatal
         }
       })();
     },
-    [albumKey, manifest, fullUrls, blossomServer],
+    [albumKey, manifest, fullUrls, fetchAndDecrypt],
   );
 
   return {
@@ -263,7 +227,7 @@ export function useAlbumViewer(opts?: { naddr?: string }): AlbumViewerState {
     thumbUrls,
     fullUrls,
     albumKey,
-    blossomServer,
+    resolvedServer,
     downloadProgress,
     downloadAll,
     downloadSingle,
