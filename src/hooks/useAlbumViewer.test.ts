@@ -116,7 +116,7 @@ describe("useAlbumViewer", () => {
     });
     mockDecryptAndValidateManifest.mockResolvedValue(sampleManifest);
     mockImportKeyFromBase64url.mockResolvedValue({} as CryptoKey);
-    vi.mocked(decryptBlob).mockImplementation(async (buf: Uint8Array) => buf.buffer);
+    vi.mocked(decryptBlob).mockImplementation(async (buf: Uint8Array) => buf.buffer as ArrayBuffer);
 
     // Reset location
     Object.defineProperty(window, "location", {

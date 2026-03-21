@@ -116,7 +116,7 @@ export default function ThumbnailGrid({
                       src={objectUrls[photo.thumbHash]}
                       style={{ aspectRatio: `${photo.width}/${photo.height}` }}
                       className="w-full object-cover rounded-md group-hover:brightness-110 transition-all"
-                      alt=""
+                      alt={photo.filename}
                     />
                     <div className="absolute inset-x-0 bottom-0 flex items-end rounded-b-md
                       bg-gradient-to-t from-black/60 via-black/20 to-transparent
