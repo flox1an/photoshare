@@ -21,27 +21,29 @@ describe("generateAlbumKey", () => {
 });
 
 describe("encryptBlob", () => {
-  it("returns ciphertext with byteLength equal to input + 16 bytes (GCM auth tag)", async () => {
+  it("returns Uint8Array with byteLength equal to 12 (IV) + input + 16 (GCM tag)", async () => {
     const key = await generateAlbumKey();
     const data = new TextEncoder().encode("hello world").buffer as ArrayBuffer;
-    const { ciphertext } = await encryptBlob(data, key);
-    expect(ciphertext.byteLength).toBe(data.byteLength + 16);
+    const blob = await encryptBlob(data, key);
+    expect(blob).toBeInstanceOf(Uint8Array);
+    expect(blob.byteLength).toBe(12 + data.byteLength + 16);
   });
 
-  it("returns a 12-byte IV", async () => {
+  it("first 12 bytes are the IV (non-zero randomness check)", async () => {
     const key = await generateAlbumKey();
     const data = new TextEncoder().encode("test").buffer as ArrayBuffer;
-    const { iv } = await encryptBlob(data, key);
-    expect(iv.byteLength).toBe(12);
+    const blob = await encryptBlob(data, key);
+    const iv = blob.slice(0, 12);
+    expect(iv.some((b: number) => b !== 0)).toBe(true);
   });
 
-  it("produces unique IVs across 200 calls (CRYPT-02: no IV reuse)", async () => {
+  it("produces unique IVs across 200 calls (no IV reuse)", async () => {
     const key = await generateAlbumKey();
     const data = new TextEncoder().encode("x").buffer as ArrayBuffer;
     const ivSet = new Set<string>();
     for (let i = 0; i < 200; i++) {
-      const { iv } = await encryptBlob(data, key);
-      ivSet.add(uint8ArrayToBase64url(iv));
+      const blob = await encryptBlob(data, key);
+      ivSet.add(uint8ArrayToBase64url(blob.slice(0, 12)));
     }
     expect(ivSet.size).toBe(200);
   });
@@ -51,17 +53,25 @@ describe("decryptBlob", () => {
   it("round-trips: decrypt(encrypt(data)) recovers original data", async () => {
     const key = await generateAlbumKey();
     const original = new TextEncoder().encode("photoshare test payload").buffer as ArrayBuffer;
-    const { ciphertext, iv } = await encryptBlob(original, key);
-    const recovered = await decryptBlob(ciphertext, key, iv);
+    const blob = await encryptBlob(original, key);
+    const recovered = await decryptBlob(blob, key);
     expect(new Uint8Array(recovered)).toEqual(new Uint8Array(original));
   });
 
-  it("throws when IV is wrong (GCM auth tag mismatch)", async () => {
+  it("throws when key is wrong (GCM auth tag mismatch)", async () => {
+    const key1 = await generateAlbumKey();
+    const key2 = await generateAlbumKey();
+    const data = new TextEncoder().encode("test").buffer as ArrayBuffer;
+    const blob = await encryptBlob(data, key1);
+    await expect(decryptBlob(blob, key2)).rejects.toThrow();
+  });
+
+  it("throws when blob is truncated below 28 bytes", async () => {
     const key = await generateAlbumKey();
     const data = new TextEncoder().encode("test").buffer as ArrayBuffer;
-    const { ciphertext } = await encryptBlob(data, key);
-    const wrongIv = new Uint8Array(12); // all zeros
-    await expect(decryptBlob(ciphertext, key, wrongIv)).rejects.toThrow();
+    const blob = await encryptBlob(data, key);
+    const truncated = blob.slice(0, 20);
+    await expect(decryptBlob(truncated, key)).rejects.toThrow("too short");
   });
 });
 
@@ -83,8 +93,8 @@ describe("exportKeyToBase64url / importKeyFromBase64url", () => {
     const b64url = await exportKeyToBase64url(key);
     const imported = await importKeyFromBase64url(b64url);
     const data = new TextEncoder().encode("round-trip test").buffer as ArrayBuffer;
-    const { ciphertext, iv } = await encryptBlob(data, key);
-    const recovered = await decryptBlob(ciphertext, imported, iv);
+    const blob = await encryptBlob(data, key);
+    const recovered = await decryptBlob(blob, imported);
     expect(new Uint8Array(recovered)).toEqual(new Uint8Array(data));
   });
 });

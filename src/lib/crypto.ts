@@ -22,35 +22,41 @@ export async function generateAlbumKey(): Promise<CryptoKey> {
 
 /**
  * Encrypt a blob with AES-256-GCM.
- * Generates a fresh 12-byte random IV per call — NEVER reuse IV with same key.
- * Returns { ciphertext: ArrayBuffer, iv: Uint8Array }
- * ciphertext = encrypted bytes + 16-byte GCM authentication tag (appended automatically)
+ * Returns IV || ciphertext as a single Uint8Array (self-contained for Blossom upload).
+ * First 12 bytes = fresh random IV. Remaining bytes = ciphertext + 16-byte GCM auth tag.
  */
 export async function encryptBlob(
   data: ArrayBuffer,
   key: CryptoKey,
-): Promise<{ ciphertext: ArrayBuffer; iv: Uint8Array }> {
-  const iv = crypto.getRandomValues(new Uint8Array(12)); // FRESH per call — critical security requirement
+): Promise<Uint8Array> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
   const ciphertext = await crypto.subtle.encrypt(
     { name: "AES-GCM", iv },
     key,
     data,
   );
-  return { ciphertext, iv };
+  const result = new Uint8Array(12 + ciphertext.byteLength);
+  result.set(iv, 0);
+  result.set(new Uint8Array(ciphertext), 12);
+  return result;
 }
 
 /**
- * Decrypt AES-256-GCM ciphertext.
- * iv must be the exact 12-byte Uint8Array used during encryptBlob.
- * Throws DOMException if ciphertext is tampered (GCM auth tag mismatch).
+ * Decrypt an IV-prepended AES-256-GCM blob.
+ * Expects first 12 bytes to be the IV, remainder is ciphertext + GCM tag.
+ * Throws if blob is too short, key is wrong, or data is tampered.
  */
 export async function decryptBlob(
-  ciphertext: ArrayBuffer,
+  blob: Uint8Array,
   key: CryptoKey,
-  iv: Uint8Array,
 ): Promise<ArrayBuffer> {
+  if (blob.byteLength < 28) {
+    throw new Error("Encrypted blob too short (must be at least 28 bytes: 12 IV + 16 GCM tag)");
+  }
+  const iv = blob.slice(0, 12);
+  const ciphertext = blob.slice(12);
   return crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: new Uint8Array(iv) },
+    { name: "AES-GCM", iv },
     key,
     ciphertext,
   );
@@ -96,20 +102,3 @@ export function base64urlToUint8Array(b64url: string): Uint8Array {
   return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 }
 
-/**
- * Safe base64 encoding for large ArrayBuffers (e.g., ciphertext blobs).
- * Uses chunked approach to avoid stack overflow for buffers > 64KB.
- * Not exported — internal helper for large buffer encoding.
- */
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  const chunkSize = 8192;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-  }
-  return btoa(binary);
-}
-
-// Suppress unused variable warning for arrayBufferToBase64 — it's available for callers that need large buffer encoding
-void arrayBufferToBase64;
