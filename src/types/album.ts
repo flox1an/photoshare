@@ -1,14 +1,10 @@
-/** Per-image entry stored in the album manifest (encrypted as kind 30078 event content) */
+/** Per-image entry stored in the album manifest */
 export interface PhotoEntry {
-  /** SHA-256 hash of the encrypted full-size blob — used as Blossom blob address */
+  /** SHA-256 hash of the encrypted full-size blob (IV || ciphertext) */
   hash: string;
-  /** base64url-encoded 12-byte IV used to encrypt the full-size blob */
-  iv: string;
-  /** SHA-256 hash of the encrypted thumbnail blob */
+  /** SHA-256 hash of the encrypted thumbnail blob (IV || ciphertext) */
   thumbHash: string;
-  /** base64url-encoded 12-byte IV used to encrypt the thumbnail blob */
-  thumbIv: string;
-  /** Original image width in pixels (for grid layout and aspect ratio) */
+  /** Original image width in pixels */
   width: number;
   /** Original image height in pixels */
   height: number;
@@ -16,8 +12,10 @@ export interface PhotoEntry {
   filename: string;
 }
 
-/** Album manifest — serialized to JSON, then encrypted as kind 30078 event content */
+/** Album manifest — serialized to JSON, encrypted, uploaded to Blossom as a blob */
 export interface AlbumManifest {
+  /** Manifest format version */
+  v: 1;
   /** Optional user-provided album title */
   title?: string;
   /** ISO 8601 creation timestamp */

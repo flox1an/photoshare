@@ -1,40 +1,20 @@
 import { describe, it, expect } from "vitest";
 import {
-  DEFAULT_RELAYS,
   DEFAULT_BLOSSOM_SERVER,
-  ALBUM_EXPIRY_SECONDS,
+  DEFAULT_BLOSSOM_SERVERS,
   BLOSSOM_EXPIRY_SECONDS,
 } from "@/lib/config";
 
-describe("DEFAULT_RELAYS (CONF-04)", () => {
-  it("contains at least one relay URL", () => {
-    expect(DEFAULT_RELAYS.length).toBeGreaterThan(0);
-  });
-
-  it("all relay URLs start with wss://", () => {
-    for (const relay of DEFAULT_RELAYS) {
-      expect(relay).toMatch(/^wss:\/\//);
-    }
-  });
-
-  it("includes relay.nostu.be", () => {
-    expect(DEFAULT_RELAYS).toContain("wss://relay.nostu.be");
-  });
-});
-
-describe("DEFAULT_BLOSSOM_SERVER (CONF-04)", () => {
-  it("starts with https://", () => {
+describe("config", () => {
+  it("DEFAULT_BLOSSOM_SERVER is a valid https URL", () => {
     expect(DEFAULT_BLOSSOM_SERVER).toMatch(/^https:\/\//);
   });
 
-  it("is tempstore.apps3.slidestr.net", () => {
-    expect(DEFAULT_BLOSSOM_SERVER).toBe("https://tempstore.apps3.slidestr.net");
-  });
-});
-
-describe("expiry constants", () => {
-  it("ALBUM_EXPIRY_SECONDS is 30 days in seconds", () => {
-    expect(ALBUM_EXPIRY_SECONDS).toBe(2592000);
+  it("DEFAULT_BLOSSOM_SERVERS is a non-empty array of https URLs", () => {
+    expect(DEFAULT_BLOSSOM_SERVERS.length).toBeGreaterThan(0);
+    for (const url of DEFAULT_BLOSSOM_SERVERS) {
+      expect(url).toMatch(/^https:\/\//);
+    }
   });
 
   it("BLOSSOM_EXPIRY_SECONDS is 60 days in seconds", () => {
