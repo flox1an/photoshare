@@ -40,7 +40,7 @@ export function ShareCard({ shareLink, isUploading, publishError }: ShareCardPro
       {isUploading && !shareLink && (
         <div className="flex items-center gap-3">
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-600 border-t-zinc-300" />
-          <span className="text-sm text-zinc-400">Publishing to Nostr...</span>
+          <span className="text-sm text-zinc-400">Uploading...</span>
         </div>
       )}
 

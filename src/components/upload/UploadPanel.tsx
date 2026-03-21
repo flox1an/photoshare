@@ -29,7 +29,6 @@ export default function UploadPanel() {
       .filter(Boolean);
     void startUpload(photosToUpload, {
       blossomServer: settings.blossomServer,
-      relays: settings.relays,
       title: albumTitle || undefined,
     });
   };
@@ -42,7 +41,7 @@ export default function UploadPanel() {
             PhotoShare
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Encrypted photo albums on Nostr. Nothing leaves your device unencrypted.
+            Encrypted photo albums. Nothing leaves your device unencrypted.
           </p>
         </div>
 
@@ -70,7 +69,7 @@ export default function UploadPanel() {
               onClick={handleUpload}
               className="w-full rounded-lg bg-zinc-100 px-4 py-3 text-sm font-medium text-zinc-900 hover:bg-white active:bg-zinc-200 transition-colors"
             >
-              Upload {processedPhotos.length} photo{processedPhotos.length !== 1 ? 's' : ''} to Nostr
+              Upload {processedPhotos.length} photo{processedPhotos.length !== 1 ? 's' : ''}
             </button>
           </div>
         )}

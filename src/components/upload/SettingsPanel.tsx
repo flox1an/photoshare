@@ -54,29 +54,6 @@ export function SettingsPanel({ settings }: SettingsPanelProps) {
 
       {isOpen && (
         <div className="border-t border-zinc-800 px-4 pb-4 pt-3 space-y-5">
-          {/* Relays section */}
-          <div>
-            <label
-              htmlFor="settings-relays"
-              className="mb-1.5 block text-xs font-medium text-zinc-400"
-            >
-              Nostr Relays
-            </label>
-            <textarea
-              id="settings-relays"
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800/50 p-3 text-xs font-mono text-zinc-200 placeholder-zinc-600 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 transition-colors"
-              rows={3}
-              value={settings.relays.join('\n')}
-              onChange={(e) => {
-                const lines = e.target.value
-                  .split('\n')
-                  .filter((line) => line.trim().length > 0);
-                settings.setRelays(lines);
-              }}
-              placeholder="One relay URL per line"
-            />
-          </div>
-
           {/* Blossom Server section */}
           <div>
             <label
