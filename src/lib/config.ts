@@ -10,6 +10,7 @@ export const DEFAULT_BLOSSOM_SERVER = "https://tempstore.apps3.slidestr.net";
  */
 export const DEFAULT_BLOSSOM_SERVERS: string[] = [
   "https://tempstore.apps3.slidestr.net",
+  "https://blossom.primal.net",
 ];
 
 /**
