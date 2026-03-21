@@ -14,6 +14,7 @@ const PROFILE_RELAYS = [
   'wss://relay.damus.io',
   'wss://nos.lol',
   'wss://relay.nostr.band',
+  'wss://purplepag.es',
 ]
 
 // Module-level pool — reused across all profile fetches
