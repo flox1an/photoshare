@@ -75,6 +75,9 @@ export default function ReactionsPanel({
   const [isSending, setIsSending] = useState(false);
 
   const pubkey = useNostrAccountStore((s) => s.pubkey);
+  const logout = useNostrAccountStore((s) => s.logout);
+  const ownProfile = useNostrProfile(pubkey);
+  const ownName = pubkey ? profileDisplayName(ownProfile, shortNpub(pubkey)) : null;
 
   // Merge reactions and comments into a single timeline sorted by created_at
   const timeline: TimelineEntry[] = [
@@ -154,7 +157,13 @@ export default function ReactionsPanel({
 
         {pubkey ? (
           <p className="text-[10px] text-zinc-600">
-            Commenting as <span className="text-zinc-500">{shortNpub(pubkey)}</span>
+            Commenting as <span className="text-zinc-500">{ownName}</span>.{' '}
+            <button
+              onClick={logout}
+              className="text-zinc-400 hover:text-zinc-200 underline underline-offset-2 transition-colors"
+            >
+              Sign out
+            </button>
           </p>
         ) : (
           <p className="text-[10px] text-zinc-600">
