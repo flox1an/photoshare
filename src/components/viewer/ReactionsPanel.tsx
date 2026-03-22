@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { nip19 } from 'nostr-tools';
 import { useNostrAccountStore } from '@/store/nostrAccountStore';
 import { useNostrProfile, profileDisplayName } from '@/hooks/useNostrProfile';
@@ -74,6 +74,8 @@ export default function ReactionsPanel({
   onClose,
 }: ReactionsPanelProps) {
   const [commentText, setCommentText] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { inputRef.current?.focus(); }, []);
   const [isSending, setIsSending] = useState(false);
 
   const pubkey = useNostrAccountStore((s) => s.pubkey);
@@ -136,6 +138,7 @@ export default function ReactionsPanel({
       <div className="shrink-0 border-t border-zinc-800 px-4 py-3 space-y-2">
         <div className="flex items-center gap-2">
           <input
+            ref={inputRef}
             type="text"
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
