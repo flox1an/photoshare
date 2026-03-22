@@ -47,9 +47,9 @@ export interface ProfileRumor extends Rumor {
 /** Unwrapped payload returned from unwrapGiftWrap */
 export type UnwrappedRumor = ReactionRumor | CommentRumor | ProfileRumor;
 
-/** Jitter timestamp 0–2 days into the past per NIP-59 to prevent timing correlation */
+/** Jitter timestamp 0–30 minutes into the past per NIP-59 to prevent timing correlation */
 function jitteredTime(): number {
-  const jitter = Math.floor(Math.random() * 172_800); // 0–172800 seconds (up to 2 days)
+  const jitter = Math.floor(Math.random() * 1_800); // 0–1800 seconds (up to 30 minutes)
   return Math.floor(Date.now() / 1000) - jitter;
 }
 
