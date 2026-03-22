@@ -13,23 +13,72 @@ Privacy model: all interaction content is encrypted inside NIP-59 gift wraps. To
 
 ---
 
+## URL Scheme Change (v2)
+
+The existing v1 URL stores a random AES-256 key in the fragment:
+
+```
+/abc123...#{aesKeyB64url}        ← v1: raw AES key in fragment
+```
+
+v2 replaces this with a Nostr **nsec** (secp256k1 private key, 32 bytes, base64url-encoded). The AES key is then derived from the nsec:
+
+```
+/abc123...#{nsecB64url}          ← v2: nsec in fragment, AES key derived
+```
+
+### Why this unifies the design
+
+The nsec serves three roles with a single value in the URL:
+
+| Role | How |
+|---|---|
+| AES decryption key | `HKDF-SHA256(nsec, info="photoshare-aes-v2")` |
+| Gift wrap recipient key | `secp256k1_pubkey(nsec)` → the `p` tag in all gift wraps |
+| Gift wrap decryption key | nsec directly, via NIP-44 |
+
+There is no separate reaction keypair. No private key needs to be stored in the manifest. The album identity, its decryption capability, and its reaction inbox are all the same thing.
+
+### AES key derivation
+
+```
+albumAESKey = HKDF-SHA256(
+  ikm  = nsecBytes,               // 32 bytes from URL fragment
+  salt = [],                      // empty; nsec has sufficient entropy
+  info = "photoshare-aes-v2",
+  len  = 32
+)
+```
+
+Implemented via Web Crypto `importKey` + `deriveBits` with HKDF algorithm.
+
+### Versioning
+
+`AlbumManifest.v` is bumped to `2` for albums using the new scheme. The viewer checks `v` after decryption:
+- `v: 1` — fragment is raw AES key; use directly (legacy read-only support).
+- `v: 2` — fragment is nsec; derive AES key before use.
+
+v1 albums remain readable; they simply have no reactions capability.
+
+---
+
 ## Key Design Decisions
 
-### Album Reaction Keypair (not the uploader's identity)
+### Album nsec as unified credential
 
-A dedicated keypair is generated for each album at upload time and stored in the encrypted manifest. This keypair is the routing target for all gift wraps.
+The nsec in the URL is a throwaway keypair — it has no connection to the uploader's real Nostr identity. It is generated freshly for every album upload, exactly as the AES key was before. The only change is what gets stored in the URL and what gets derived from it.
 
-- **Why not the uploader's pubkey?** Uploaders may use ephemeral signers and have no persistent Nostr identity. We cannot guarantee a real pubkey exists.
-- **Why not derive from the AES key?** HKDF over a symmetric key into secp256k1 is non-standard and creates an odd coupling. A fresh keypair is cleaner.
-- **Security:** The reaction private key lives inside the encrypted manifest. Anyone with the share link (and thus the AES key) can decrypt the manifest and therefore decrypt all gift wraps. This is intentional — the share link is the access credential.
+- **Why not the uploader's real nsec?** It would expose their full Nostr identity to anyone they share the link with, and allow any link recipient to sign events as the uploader. The per-album throwaway nsec carries none of that risk.
+- **Why not keep a separate reaction keypair in the manifest?** The nsec already ends up in the share URL. Deriving the reaction keypair from it means one value does everything — no key material to embed, rotate, or lose.
 
 ### Gift Wrap Routing
 
-All gift wraps are addressed to the album's reaction pubkey (`p` tag). The viewer:
-1. Extracts `reactionPrivkey` from the decrypted manifest.
-2. Queries configured relays: `{"kinds":[1059],"#p":["<reactionPubkey>"]}`
-3. Decrypts each gift wrap → seal → rumor.
-4. Groups rumors by `img` tag (encrypted blob hash) to associate with individual photos.
+All gift wraps are addressed to `secp256k1_pubkey(nsec)` in the `p` tag. The viewer:
+1. Reads `nsecBytes` from the URL fragment.
+2. Derives `albumPubkey = secp256k1_pubkey(nsecBytes)`.
+3. Queries configured relays: `{"kinds":[1059],"#p":["<albumPubkey>"]}`
+4. Decrypts each gift wrap using `nsecBytes` as the recipient key.
+5. Groups rumors by `img` tag to associate with individual photos.
 
 ### Anonymous vs Identified Comments
 
@@ -38,28 +87,24 @@ All gift wraps are addressed to the album's reaction pubkey (`p` tag). The viewe
 | Anonymous | Ephemeral (throwaway) | Same ephemeral key |
 | Identified (NIP-07 / bunker) | User's real pubkey | User's real key |
 
-In both cases the gift wrap outer layer is always signed by a fresh ephemeral key — this is the NIP-59 standard. The relay never learns who sent it.
+The gift wrap outer layer is always signed by a fresh ephemeral key — NIP-59 standard. The relay never learns who sent it.
 
-An identified commenter's real pubkey appears in the *rumor* and *seal*, meaning it is visible to anyone who can decrypt (i.e., anyone with the share link). It is not visible to the relay.
+An identified commenter's real pubkey appears in the rumor and seal, visible to anyone who can decrypt (i.e., anyone with the share link). Not visible to the relay.
 
 ---
 
 ## Album Manifest Changes
 
-Add an optional `reactions` field to `AlbumManifest`:
+`AlbumManifest.v` becomes `2`. The `reactions` field is simplified — no key material needed:
 
 ```ts
 interface AlbumReactionConfig {
   /** NIP-59 relay URLs to publish/query gift wraps */
   relays: string[];
-  /** Hex public key — included in gift wrap `p` tags; safe to expose */
-  pubkey: string;
-  /** Hex private key — kept inside the encrypted manifest, never in the URL */
-  privkey: string;
 }
 
 interface AlbumManifest {
-  v: 1;
+  v: 2;
   title?: string;
   createdAt: string;
   photos: PhotoEntry[];
@@ -67,6 +112,8 @@ interface AlbumManifest {
   reactions?: AlbumReactionConfig;
 }
 ```
+
+The album pubkey and privkey are derived at runtime from the nsec in the URL — they are never stored anywhere.
 
 When `reactions` is absent the viewer renders no UI for interactions and makes no relay queries.
 
@@ -119,8 +166,8 @@ When `reactions` is absent the viewer renders no UI for interactions and makes n
 }
 ```
 
-Encryption key: NIP-44 shared secret between sender privkey and album `reactionPubkey`.
-Timestamp is jittered ±2 days per NIP-59.
+Encryption key: NIP-44 shared secret between sender privkey and `albumPubkey`.
+Timestamp jittered ±2 days per NIP-59.
 
 ### Gift Wrap (kind 1059) — published to relay
 
@@ -130,36 +177,39 @@ Timestamp is jittered ±2 days per NIP-59.
   "pubkey": "<ephemeral_pubkey>",
   "created_at": <jittered_timestamp>,
   "tags": [
-    ["p", "<album_reactionPubkey>"]
+    ["p", "<albumPubkey>"]
   ],
   "content": "<NIP-44 encrypted seal JSON>",
   "sig": "<ephemeral key signs this>"
 }
 ```
 
-Encryption key: NIP-44 shared secret between ephemeral privkey and album `reactionPubkey`.
-A fresh ephemeral keypair is generated for every gift wrap, regardless of sender identity.
+Encryption key: NIP-44 shared secret between ephemeral privkey and `albumPubkey`.
+Fresh ephemeral keypair generated per gift wrap regardless of sender identity.
 
 ---
 
 ## Unwrap Flow (Viewer Reads Reactions)
 
 ```
-1. Decrypt manifest → extract reactionPrivkey + relays
-2. Subscribe: {"kinds":[1059], "#p":["<reactionPubkey>"]}
-3. For each gift wrap event received:
-   a. Compute NIP-44 secret: reactionPrivkey × giftWrap.pubkey
+1. Parse URL fragment → nsecBytes (base64url decode)
+2. Derive albumAESKey via HKDF (for manifest decryption)
+3. Decrypt manifest → read reactions.relays
+4. Derive albumPubkey = secp256k1_pubkey(nsecBytes)
+5. Subscribe on reactions.relays: {"kinds":[1059], "#p":["<albumPubkey>"]}
+6. For each gift wrap event received:
+   a. Compute NIP-44 secret: nsecBytes × giftWrap.pubkey
    b. Decrypt giftWrap.content → seal JSON
-   c. Compute NIP-44 secret: reactionPrivkey × seal.pubkey
+   c. Compute NIP-44 secret: nsecBytes × seal.pubkey
    d. Decrypt seal.content → rumor JSON
-   e. Validate rumor: check kind (7 or 1), check img tag hash is in manifest photos
+   e. Validate: check kind (7 or 1), check img tag hash exists in manifest.photos
    f. Store: Map<photoHash, { reactions: Rumor[], comments: Rumor[] }>
-4. Update UI reactively as subscription delivers events
+7. Update UI reactively as subscription delivers events
 ```
 
 Ignore / discard:
 - Gift wraps that fail decryption.
-- Rumors with `img` hashes not present in the manifest (garbage or wrong album).
+- Rumors with `img` hashes not in the manifest (wrong album or garbage).
 - Duplicate rumors (same content + pubkey + timestamp within 1s).
 
 ---
@@ -169,17 +219,18 @@ Ignore / discard:
 ```
 1. User clicks ❤️ or submits comment text
 2. Determine sender identity:
-   - If not logged in → generate ephemeral keypair for this rumor
+   - If not logged in → generate ephemeral keypair (anonymous)
    - If logged in (NIP-07 / bunker) → use account signer
-3. Build rumor (unsigned, no id)
-4. Sign seal:
-   - sender signs kind 13 with NIP-44 encrypted rumor (key: senderPriv × reactionPubkey)
+3. Derive albumPubkey from nsecBytes
+4. Build rumor (unsigned, no id)
+5. Sign seal:
+   - Sender signs kind 13, NIP-44 encrypts rumor (key: senderPriv × albumPubkey)
    - Jitter created_at ±2 days
-5. Wrap gift:
+6. Wrap gift:
    - Generate fresh ephemeral keypair
-   - Ephemeral key signs kind 1059 with NIP-44 encrypted seal (key: ephemeralPriv × reactionPubkey)
+   - Ephemeral key signs kind 1059, NIP-44 encrypts seal (key: ephemeralPriv × albumPubkey)
    - Jitter created_at ±2 days
-6. Publish gift wrap to all relays in manifest.reactions.relays
+7. Publish gift wrap to all relays in manifest.reactions.relays
 ```
 
 ---
@@ -212,73 +263,75 @@ wss://nos.lol
 wss://relay.nostr.band
 ```
 
-When `startUpload` runs:
-- If reactions enabled: `generateReactionKeypair()` → `{ privkey, pubkey }` → include in manifest as `reactions: { relays, pubkey, privkey }`.
-- If reactions disabled: omit `reactions` field entirely.
+### Changes to `startUpload`
+
+The upload flow changes as follows for v2:
+
+1. **Generate album nsec** (32 random bytes, valid secp256k1 scalar) instead of a random AES key.
+2. **Derive AES key** via HKDF from the nsec before use.
+3. **If reactions enabled:** embed `reactions: { relays }` in the manifest — no keypair fields needed.
+4. **Build share URL:** fragment = `base64url(nsecBytes)` instead of `base64url(aesKeyBytes)`.
+
+No `generateReactionKeypair()` function is needed. The nsec generation replaces what was formerly AES key generation.
 
 ---
 
 ## Viewer Panel Changes
 
+### URL Parsing
+
+`useAlbumLoader` (or equivalent) is updated to:
+1. Base64url-decode the fragment → `nsecBytes`.
+2. Run HKDF to get `albumAESKey`.
+3. Detect manifest `v` field after decryption; fall back to treating fragment as raw AES key if `v: 1`.
+
 ### Login Entry Point
 
-When `manifest.reactions` is present, the viewer shows a login affordance for identified commenting. This reuses the existing `LoginDialog` and `nostrAccountStore` (from the Nostr Login spec).
+When `manifest.reactions` is present, the viewer shows a login affordance for identified commenting. Reuses existing `LoginDialog` and `nostrAccountStore`.
 
 Viewers who are not logged in can still react/comment anonymously.
 
 ### Masonry Grid — Reaction Indicator
 
-After reactions are loaded, photos with at least one reaction or comment show a small overlay badge in the bottom-left corner of the thumbnail:
+Photos with at least one reaction or comment show a small overlay badge:
 
 ```
 ┌──────────────────┐
 │                  │
 │   [thumbnail]    │
 │                  │
-│ 💬 3  ❤ 7        │  ← overlay, only shown when count > 0
+│ 💬 3  ❤ 7        │  ← absolute bottom-1 left-1, semi-transparent pill
 └──────────────────┘
 ```
 
-- Semi-transparent dark pill, small text, positioned `absolute bottom-1 left-1`.
-- Icons: a chat bubble for comments, a heart for reactions.
-- Show only counts (not avatars or names) — keeps the masonry view clean.
-- Counts update live as the subscription delivers new events.
+- Shows only counts. Updates live as subscription delivers events.
+- Hidden entirely when `manifest.reactions` is absent.
 
 ### Lightbox — Comments & Reactions Panel
 
-On desktop: a side panel slides in from the right when the user opens the reactions view (toggled by a button in the lightbox toolbar).
-
-On mobile: a bottom sheet (partial height, scrollable).
-
-**Panel layout:**
+Desktop: side panel slides in from the right, toggled by a toolbar button.
+Mobile: bottom sheet (partial height, scrollable).
 
 ```
 ┌─────────────────────────────┐
 │  Reactions                  │
-│  ❤ 7   🔥 2   😍 1          │  ← emoji reaction summary row
+│  ❤ 7   🔥 2   😍 1          │  ← grouped by emoji, sorted by count
 │─────────────────────────────│
 │  Comments                 3 │
-│  ──────────────────────     │
 │  [anon]  Great shot!  2m    │
 │  npub1ab…  Love it!   5m    │
 │  [anon]  Where is this? 1h  │
 │─────────────────────────────│
-│  [             ] [Send]     │  ← comment input
+│  [             ] [Send]     │
 │  [Sign in to identify] or   │
 │  leave anonymously          │
 └─────────────────────────────┘
 ```
 
-- Anonymous commenters display as `[anon]`.
-- Identified commenters display as truncated npub (`npub1abc…xyz`) — no profile fetch.
-- Timestamps: relative (`2m`, `1h`, `3d`).
-- Comments sorted oldest-first.
-- Reaction row: group by `content` string, show emoji + count, sorted by count desc.
-- If reactions are disabled (`manifest.reactions` absent): panel button is hidden entirely; no relay queries.
-
-### Toolbar Button
-
-Add a speech bubble icon button to the lightbox toolbar (alongside the existing download button). Shows a dot indicator if the current photo has any reactions/comments.
+- Anonymous: display as `[anon]`.
+- Identified: truncated npub (`npub1abc…xyz`), no profile fetch.
+- Timestamps: relative (`2m`, `1h`, `3d`). Comments oldest-first.
+- Panel button hidden when `manifest.reactions` absent.
 
 ---
 
@@ -286,115 +339,103 @@ Add a speech bubble icon button to the lightbox toolbar (alongside the existing 
 
 ### `src/lib/nostr/nip59.ts`
 
-Core gift wrap logic:
-
 ```ts
-// Build and sign a gift wrap containing a reaction or comment
 export async function createGiftWrap(
   rumor: UnsignedRumor,
-  senderSigner: ISigner | null,   // null → anonymous (generates ephemeral internally)
-  recipientPubkey: string         // album reaction pubkey
-): Promise<NostrEvent>            // signed kind 1059, ready to publish
+  senderSigner: ISigner | null,  // null → anonymous ephemeral
+  recipientPubkey: string        // albumPubkey derived from nsec
+): Promise<NostrEvent>           // signed kind 1059, ready to publish
 
-// Unwrap a gift wrap: returns the inner rumor or throws
 export async function unwrapGiftWrap(
   giftWrap: NostrEvent,
-  recipientPrivkey: string
+  recipientPrivkey: Uint8Array   // nsecBytes from URL fragment
 ): Promise<Rumor>
 ```
 
-NIP-44 encryption via `nostr-tools/nip44`.
+### `src/lib/crypto.ts` (additions)
+
+```ts
+// Derive album AES key from nsec bytes
+export async function deriveAlbumAESKey(nsecBytes: Uint8Array): Promise<CryptoKey>
+
+// Generate a fresh album nsec (random valid secp256k1 scalar)
+export function generateAlbumNsec(): Uint8Array
+
+// Derive Nostr pubkey (hex) from nsec bytes
+export function nsecToPubkey(nsecBytes: Uint8Array): string
+```
 
 ### `src/hooks/useReactions.ts`
 
 ```ts
-export function useReactions(manifest: AlbumManifest | null): {
-  // Map from photoHash → aggregated reaction data
+export function useReactions(
+  manifest: AlbumManifest | null,
+  nsecBytes: Uint8Array | null
+): {
   reactionsByPhoto: Map<string, PhotoReactions>;
-  // Submit a reaction (kind 7)
   react: (photoHash: string, content: string) => Promise<void>;
-  // Submit a comment (kind 1)
   comment: (photoHash: string, text: string) => Promise<void>;
-  // True while initial subscription is loading
   loading: boolean;
-}
-
-interface PhotoReactions {
-  comments: Rumor[];
-  reactions: Rumor[];
 }
 ```
 
-Internally:
-- If `manifest.reactions` is absent: returns empty state immediately, never queries.
-- Opens a `SimplePool` subscription on mount; closes on unmount.
-- Decrypts each received gift wrap in a try/catch; silently discards failures.
+- No-ops if `manifest.reactions` absent or `nsecBytes` null.
+- Opens `SimplePool` subscription on mount, closes on unmount.
 
 ### `src/components/viewer/ReactionsPanel.tsx`
 
-Side panel / bottom sheet rendering comments and reactions for the currently open lightbox photo. Receives `PhotoReactions | undefined` and renders accordingly. Contains the comment input form.
+Side panel / bottom sheet. Receives `PhotoReactions | undefined` and `nsecBytes`. Contains comment input.
 
 ### `src/components/viewer/ReactionsBadge.tsx`
 
-Small overlay badge for the masonry thumbnail. Props: `{ reactions: number; comments: number }`. Returns `null` when both are zero.
+Overlay badge. Props: `{ reactions: number; comments: number }`. Returns `null` when both zero.
 
 ---
 
 ## Modified Files
 
-### `src/types/album.ts`
-
-Add `AlbumReactionConfig` interface and extend `AlbumManifest` with optional `reactions` field.
-
-### `src/components/upload/UploadPanel.tsx` / settings section
-
-Add reactions toggle and relay list editor.
-
-### `src/hooks/useUpload.ts`
-
-When reactions are enabled, call `generateReactionKeypair()` and embed result in manifest before encryption.
-
-### `src/components/viewer/ThumbnailGrid.tsx`
-
-Render `<ReactionsBadge>` overlay on each thumbnail when `manifest.reactions` is present.
-
-### `src/components/viewer/Lightbox.tsx`
-
-- Add reactions panel toggle button to toolbar.
-- Conditionally render `<ReactionsPanel>` as side panel (desktop) or bottom sheet (mobile).
-- Pass current photo hash to panel.
+| File | Change |
+|---|---|
+| `src/types/album.ts` | Add `AlbumReactionConfig` (relays only); `AlbumManifest.v: 1 \| 2`; add `reactions?` |
+| `src/lib/crypto.ts` | Add `deriveAlbumAESKey`, `generateAlbumNsec`, `nsecToPubkey` |
+| `src/hooks/useUpload.ts` | Generate nsec instead of AES key; derive AES; embed `reactions` in manifest when enabled |
+| `src/hooks/useAlbumLoader.ts` | Decode nsec from fragment; derive AES key; pass nsecBytes down |
+| `src/components/upload/UploadPanel.tsx` | Add reactions toggle + relay list editor to settings panel |
+| `src/components/viewer/ThumbnailGrid.tsx` | Render `<ReactionsBadge>` overlays |
+| `src/components/viewer/Lightbox.tsx` | Add reactions panel toggle button; render `<ReactionsPanel>` |
 
 ---
 
 ## New Dependencies
 
-| Package | Purpose |
-|---|---|
-| `nostr-tools/nip44` | NIP-44 v2 encryption (already in nostr-tools 2.x) |
-| `nostr-tools/nip59` | Gift wrap helpers if available, otherwise implement inline |
-
-No new npm packages required — `nostr-tools` 2.23.3 already ships NIP-44.
+None. `nostr-tools` 2.23.3 ships NIP-44, and secp256k1 pubkey derivation (`getPublicKey`) is already available. HKDF is native Web Crypto.
 
 ---
 
 ## Relay Behavior
 
-Gift wraps (kind 1059) look like ordinary encrypted DMs to the relay. No relay-side categorization of "album reactions" occurs. The relay only knows:
+Gift wraps (kind 1059) are indistinguishable from encrypted DMs to relays. The album pubkey is fresh per album and unlinked from any user identity — relay operators cannot correlate activity across albums or link it to any known pubkey.
 
-- There is a kind 1059 event.
-- It is addressed to some pubkey (the album reaction pubkey).
-- The content is opaque ciphertext.
+---
 
-The album reaction pubkey is fresh per album and not linked to any user identity, so relay operators cannot correlate activity across albums.
+## Migration / Backward Compatibility
+
+| Scenario | Behavior |
+|---|---|
+| Opening a v1 URL | Viewer detects `manifest.v === 1` after decryption; no reactions UI shown; fragment treated as raw AES key |
+| Opening a v2 URL | Fragment decoded as nsec; AES key derived; reactions available if `manifest.reactions` present |
+| v1 album, reactions query | Never happens — reactions UI only shown for v2 manifests |
+
+No re-encoding or migration of existing share links is required.
 
 ---
 
 ## Out of Scope
 
-- Moderation / deleting others' comments (no server, no moderator key).
-- Reactions to the album as a whole (only per-photo reactions).
+- Moderation / deleting others' comments.
+- Reactions to the album as a whole (only per-photo).
 - Push notifications for new reactions.
 - Reply threading on comments.
 - Comment editing or deletion by the sender.
-- Displaying reaction sender avatars or display names (would require profile fetches; kept minimal intentionally).
-- Rate limiting / spam protection (trust model: share link = access; spammers would need the link).
+- Reaction sender avatars or display names.
+- Rate limiting / spam protection (trust model: share link = access).
