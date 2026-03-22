@@ -27,7 +27,7 @@ export function subscriptionMethod(relays: string[], filters: Filter[]): Observa
  * Settles all relay promises; individual relay failures are non-fatal.
  */
 export async function publishMethod(relays: string[], event: NostrEvent): Promise<void> {
-  await pool.publish(relays, event)
+  await pool.publish(event, relays)
 }
 
 /**
