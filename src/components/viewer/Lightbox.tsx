@@ -137,10 +137,10 @@ export default function Lightbox({
 
   useEffect(() => {
     resetHideTimer();
-    const events = ["mousemove", "mousedown", "touchstart", "keydown"] as const;
-    events.forEach((e) => window.addEventListener(e, resetHideTimer));
+    const pointerEvents = ["mousemove", "mousedown", "touchstart"] as const;
+    pointerEvents.forEach((e) => window.addEventListener(e, resetHideTimer));
     return () => {
-      events.forEach((e) => window.removeEventListener(e, resetHideTimer));
+      pointerEvents.forEach((e) => window.removeEventListener(e, resetHideTimer));
       if (hideTimer.current) clearTimeout(hideTimer.current);
     };
   }, [resetHideTimer]);
