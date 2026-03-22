@@ -81,7 +81,10 @@ export async function decryptAndValidateManifest(
         reactions = { relays: r.relays as string[] };
       }
     }
-    return { v: 2, ...base, ...(reactions ? { reactions } : {}) };
+    const expiresAt = typeof obj.expiresAt === "string" && obj.expiresAt.length > 0
+      ? obj.expiresAt
+      : undefined;
+    return { v: 2, ...base, ...(expiresAt ? { expiresAt } : {}), ...(reactions ? { reactions } : {}) };
   }
 
   return { v: 1, ...base };

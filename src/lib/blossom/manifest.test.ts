@@ -85,4 +85,31 @@ describe("decryptAndValidateManifest", () => {
     const result = await decryptAndValidateManifest(blob, key);
     expect(result.title).toBeUndefined();
   });
+
+  it("round-trips expiresAt in v2 manifest", async () => {
+    const key = await generateAlbumKey();
+    const manifest: AlbumManifest = {
+      v: 2,
+      createdAt: "2026-03-21T00:00:00.000Z",
+      expiresAt: "2026-03-21T01:00:00.000Z",
+      photos: [],
+      reactions: { relays: ["wss://nos.lol"] },
+    };
+    const blob = await encryptManifest(manifest, key);
+    const result = await decryptAndValidateManifest(blob, key);
+    expect(result).toEqual(manifest);
+  });
+
+  it("omits expiresAt when not set in v2 manifest", async () => {
+    const key = await generateAlbumKey();
+    const manifest: AlbumManifest = {
+      v: 2,
+      createdAt: "2026-03-21T00:00:00.000Z",
+      photos: [],
+    };
+    const blob = await encryptManifest(manifest, key);
+    const result = await decryptAndValidateManifest(blob, key);
+    expect(result).toEqual(manifest);
+    if (result.v === 2) expect(result.expiresAt).toBeUndefined();
+  });
 });
