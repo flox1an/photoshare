@@ -16,7 +16,7 @@ interface Props {
 
 export default function ViewerPanel({ hash }: Props) {
   const viewer = useAlbumViewer({ hash });
-  const { reactionsByPhoto, react, comment } = useReactions(viewer.manifest, viewer.nsecBytes);
+  const { reactionsByPhoto, react, comment, loading: reactionsLoading } = useReactions(viewer.manifest, viewer.nsecBytes);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   // The pubkey that represents the current viewer (logged-in or persistent anon)
@@ -241,6 +241,7 @@ export default function ViewerPanel({ hash }: Props) {
           onClose={() => setLightboxIndex(null)}
           onDownload={handleDownloadSingle}
           reactionsByPhoto={reactionsEnabled && viewer.nsecBytes ? reactionsByPhoto : undefined}
+          reactionsLoading={reactionsEnabled ? reactionsLoading : false}
           onReact={reactionsEnabled ? handleReact : undefined}
           onComment={reactionsEnabled ? comment : undefined}
           onLoginRequest={() => setLoginOpen(true)}

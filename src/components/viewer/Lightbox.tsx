@@ -20,6 +20,7 @@ interface LightboxProps {
   onImageLoaded?: () => void;
   /** Reactions data for the current photo — undefined when reactions not enabled */
   reactionsByPhoto?: Map<string, PhotoReactions>;
+  reactionsLoading?: boolean;
   onReact?: (photoHash: string) => Promise<void>;
   onComment?: (photoHash: string, text: string) => Promise<void>;
   onLoginRequest?: () => void;
@@ -38,6 +39,7 @@ export default function Lightbox({
   onDownload,
   onImageLoaded,
   reactionsByPhoto,
+  reactionsLoading,
   onReact,
   onComment,
   onLoginRequest,
@@ -211,6 +213,7 @@ export default function Lightbox({
             <ReactionsPanel
               photoHash={photo.hash}
               reactions={reactionsByPhoto?.get(photo.hash)}
+              loading={reactionsLoading}
               onComment={onComment}
               onLoginRequest={onLoginRequest ?? (() => {})}
               onClose={() => setReactionsPanelOpen(false)}
@@ -221,6 +224,7 @@ export default function Lightbox({
             <ReactionsPanel
               photoHash={photo.hash}
               reactions={reactionsByPhoto?.get(photo.hash)}
+              loading={reactionsLoading}
               onComment={onComment}
               onLoginRequest={onLoginRequest ?? (() => {})}
               onClose={() => setReactionsPanelOpen(false)}

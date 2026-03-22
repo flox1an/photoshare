@@ -92,53 +92,48 @@ export function useReactions(
 
     setLoading(true);
 
+    const handleEvent = (event: NostrEvent) => {
+      let rumor: UnwrappedRumor;
+      try {
+        rumor = unwrapGiftWrap(event, nsecBytes);
+      } catch {
+        return;
+      }
+
+      const photoHash = photoHashFromRumor(rumor);
+      if (!photoHash || !validPhotoHashes.has(photoHash)) return;
+
+      setReactionsByPhoto((prev) => {
+        const existing = prev.get(photoHash) ?? { reactions: [], comments: [] };
+        if (rumor.kind === 7) {
+          if (isDuplicate(existing.reactions, rumor)) return prev;
+          const next = new Map(prev);
+          next.set(photoHash, {
+            ...existing,
+            reactions: [...existing.reactions, rumor].sort((a, b) => a.created_at - b.created_at),
+          });
+          return next;
+        } else {
+          if (isDuplicate(existing.comments, rumor)) return prev;
+          const next = new Map(prev);
+          next.set(photoHash, {
+            ...existing,
+            comments: [...existing.comments, rumor].sort((a, b) => a.created_at - b.created_at),
+          });
+          return next;
+        }
+      });
+    };
+
     const unsubscribe = subscribeEvents(
       relays,
       { kinds: [1059], '#p': [albumPubkey] },
-      (event: NostrEvent) => {
-        let rumor: UnwrappedRumor;
-        try {
-          rumor = unwrapGiftWrap(event, nsecBytes);
-        } catch {
-          // Decryption failed or malformed — silently discard
-          return;
-        }
-
-        const photoHash = photoHashFromRumor(rumor);
-        if (!photoHash || !validPhotoHashes.has(photoHash)) return;
-
-        setReactionsByPhoto((prev) => {
-          const existing = prev.get(photoHash) ?? { reactions: [], comments: [] };
-
-          if (rumor.kind === 7) {
-            if (isDuplicate(existing.reactions, rumor)) return prev;
-            const next = new Map(prev);
-            next.set(photoHash, {
-              ...existing,
-              reactions: [...existing.reactions, rumor].sort((a, b) => a.created_at - b.created_at),
-            });
-            return next;
-          } else {
-            if (isDuplicate(existing.comments, rumor)) return prev;
-            const next = new Map(prev);
-            next.set(photoHash, {
-              ...existing,
-              comments: [...existing.comments, rumor].sort((a, b) => a.created_at - b.created_at),
-            });
-            return next;
-          }
-        });
-
-        setLoading(false);
-      },
+      handleEvent,
+      () => setLoading(false), // clear loading on EOSE
     );
-
-    // Mark loading done after a short settle time even if no events arrive
-    const loadingTimer = setTimeout(() => setLoading(false), 3000);
 
     return () => {
       unsubscribe();
-      clearTimeout(loadingTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [albumPubkey, relays?.join(','), nsecBytes]);

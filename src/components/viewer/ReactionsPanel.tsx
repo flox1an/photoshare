@@ -13,6 +13,7 @@ import type { UnwrappedRumor } from '@/lib/nostr/nip59';
 interface ReactionsPanelProps {
   photoHash: string;
   reactions: PhotoReactions | undefined;
+  loading?: boolean;
   onComment: (photoHash: string, text: string) => Promise<void>;
   onLoginRequest: () => void;
   onClose: () => void;
@@ -67,6 +68,7 @@ function TimelineRow({ entry }: { entry: TimelineEntry }) {
 export default function ReactionsPanel({
   photoHash,
   reactions,
+  loading,
   onComment,
   onLoginRequest,
   onClose,
@@ -114,7 +116,12 @@ export default function ReactionsPanel({
 
       {/* Timeline feed */}
       <div className="flex-1 overflow-y-auto px-4 py-3">
-        {timeline.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center gap-2 py-2">
+            <div className="w-3.5 h-3.5 border border-zinc-600 border-t-zinc-400 rounded-full animate-spin shrink-0" />
+            <p className="text-xs text-zinc-600">Loading…</p>
+          </div>
+        ) : timeline.length === 0 ? (
           <p className="text-xs text-zinc-600 py-2">No comments yet. Be the first!</p>
         ) : (
           <ul className="space-y-4">

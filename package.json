@@ -15,6 +15,7 @@
     "applesauce-core": "^5.2.0",
     "applesauce-factory": "^4.0.0",
     "applesauce-react": "^5.1.0",
+    "applesauce-relay": "^5.2.0",
     "applesauce-signers": "^5.1.0",
     "blurhash": "^2.0.5",
     "comlink": "4.4.2",
