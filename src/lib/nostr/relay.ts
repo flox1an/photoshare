@@ -41,6 +41,7 @@ export function subscribeEvents(
   filter: Filter,
   onevent: (event: NostrEvent) => void,
 ): () => void {
-  const sub = pool.subscribeMany(relays, [filter], { onevent })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sub = pool.subscribeMany(relays, filter as any, { onevent })
   return () => sub.close()
 }
