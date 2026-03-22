@@ -74,6 +74,13 @@ export default function Lightbox({
     return () => window.removeEventListener("keydown", handler);
   }, [onNext, onPrev, onClose]);
 
+  // Lock body scroll while lightbox is open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   const bind = useGesture(
     {
       onDrag: ({ swipe: [swipeX], offset: [ox, oy], memo, first, tap }) => {
