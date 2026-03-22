@@ -5,6 +5,7 @@ import { nip19 } from 'nostr-tools';
 import { useNostrAccountStore } from '@/store/nostrAccountStore';
 import { useNostrProfile, profileDisplayName } from '@/hooks/useNostrProfile';
 import { anonDisplayName } from '@/lib/anonName';
+import { getAnonKeypair } from '@/lib/nostr/anonIdentity';
 import ProfileAvatar from './ProfileAvatar';
 import type { PhotoReactions } from '@/hooks/useReactions';
 import type { UnwrappedRumor } from '@/lib/nostr/nip59';
@@ -157,7 +158,7 @@ export default function ReactionsPanel({
           </p>
         ) : (
           <p className="text-[10px] text-zinc-600">
-            Commenting anonymously.{' '}
+            Commenting anonymously as <span className="text-zinc-500">{anonDisplayName(getAnonKeypair().pubkey)}</span>.{' '}
             <button
               onClick={onLoginRequest}
               className="text-zinc-400 hover:text-zinc-200 underline underline-offset-2 transition-colors"
