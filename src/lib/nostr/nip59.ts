@@ -55,15 +55,16 @@ function conversationKey(senderPrivkey: Uint8Array, recipientPubkey: string): Ui
  * Create a NIP-59 gift wrap containing a reaction or comment rumor.
  *
  * @param rumor - The unsigned event to wrap (kind 7 reaction or kind 1 comment)
- * @param senderPubkey - Hex pubkey to attribute the message to. Pass null for anonymous.
  * @param senderPrivkey - Private key for signing the seal. Pass null for anonymous (generates ephemeral).
  * @param recipientPubkey - Album reaction pubkey (hex). Gift wrap is addressed to this key.
+ * @param expirationTs - Optional Unix timestamp (seconds) for NIP-40 expiration tag on the gift wrap.
  * @returns Signed kind 1059 event ready to publish.
  */
 export function createGiftWrap(
   rumor: Rumor,
   senderPrivkey: Uint8Array | null,
   recipientPubkey: string,
+  expirationTs?: number,
 ): NostrEvent {
   // For the seal, use the sender's key if provided, otherwise generate ephemeral
   const sealPrivkey = senderPrivkey ?? generateSecretKey();
@@ -86,10 +87,13 @@ export function createGiftWrap(
   const wrapConvKey = conversationKey(wrapPrivkey, recipientPubkey);
   const encryptedSeal = nip44.v2.encrypt(JSON.stringify(seal), wrapConvKey);
 
+  const wrapTags: string[][] = [['p', recipientPubkey]];
+  if (expirationTs !== undefined) wrapTags.push(['expiration', String(expirationTs)]);
+
   const wrapTemplate = {
     kind: 1059,
     content: encryptedSeal,
-    tags: [['p', recipientPubkey]],
+    tags: wrapTags,
     created_at: jitteredTime(),
   };
   return finalizeEvent(wrapTemplate, wrapPrivkey);

@@ -40,6 +40,8 @@ export interface AlbumManifestV2 {
   v: 2;
   title?: string;
   createdAt: string;
+  /** ISO 8601 expiry timestamp — when set, gift-wrap events use this as their NIP-40 expiration */
+  expiresAt?: string;
   photos: PhotoEntry[];
   /** Present only when the uploader enabled reactions and comments */
   reactions?: AlbumReactionConfig;

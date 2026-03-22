@@ -219,10 +219,12 @@ export function useUpload(): UseUploadReturn {
         }
 
         // Build and encrypt manifest
+        const expiresAt = expSec ? new Date(Date.now() + expSec * 1000).toISOString() : undefined;
         const manifest: AlbumManifest = {
           v: 2,
           ...(settings.title ? { title: settings.title } : {}),
           createdAt: new Date().toISOString(),
+          ...(expiresAt ? { expiresAt } : {}),
           photos: photoEntries.filter(Boolean),
           ...(settings.reactions ? { reactions: { relays: settings.reactions.relays } } : {}),
         };

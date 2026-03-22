@@ -89,4 +89,25 @@ describe("Lightbox", () => {
 
     expect(onClose).toHaveBeenCalledOnce();
   });
+
+  it("does not render reaction/comment buttons when reactionsByPhoto is not provided", () => {
+    render(<Lightbox {...defaultProps} />);
+
+    expect(screen.queryByLabelText("Comments")).toBeNull();
+  });
+
+  it("renders comment button when reactionsByPhoto is provided", () => {
+    const onComment = vi.fn();
+    const onReact = vi.fn();
+    render(
+      <Lightbox
+        {...defaultProps}
+        reactionsByPhoto={new Map()}
+        onReact={onReact}
+        onComment={onComment}
+      />,
+    );
+
+    expect(screen.getByLabelText("Comments")).toBeDefined();
+  });
 });

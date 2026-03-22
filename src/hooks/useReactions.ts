@@ -145,6 +145,12 @@ export function useReactions(
 
   const accountPubkey = useNostrAccountStore((s) => s.pubkey);
 
+  // Unix timestamp (seconds) from manifest expiresAt, passed as NIP-40 tag on gift wraps
+  const expirationTs =
+    manifest && manifest.v === 2 && manifest.expiresAt
+      ? Math.floor(new Date(manifest.expiresAt).getTime() / 1000)
+      : undefined;
+
   const addOptimistic = useCallback((photoHash: string, rumor: UnwrappedRumor) => {
     setReactionsByPhoto((prev) => {
       const existing = prev.get(photoHash) ?? { reactions: [], comments: [] };
@@ -178,7 +184,7 @@ export function useReactions(
       const senderPrivkey = anon?.privkey ?? null;
 
       const rumor = buildReactionRumor(photoHash, manifestHash, '+', senderPubkey);
-      const giftWrap = createGiftWrap(rumor, senderPrivkey, albumPubkey);
+      const giftWrap = createGiftWrap(rumor, senderPrivkey, albumPubkey, expirationTs);
       await publishMethod(relays, giftWrap);
       addOptimistic(photoHash, rumor);
     },
@@ -195,7 +201,7 @@ export function useReactions(
       const senderPrivkey = anon?.privkey ?? null;
 
       const rumor = buildCommentRumor(photoHash, manifestHash, text.trim(), senderPubkey);
-      const giftWrap = createGiftWrap(rumor, senderPrivkey, albumPubkey);
+      const giftWrap = createGiftWrap(rumor, senderPrivkey, albumPubkey, expirationTs);
       await publishMethod(relays, giftWrap);
       addOptimistic(photoHash, rumor);
     },

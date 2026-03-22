@@ -141,6 +141,7 @@ export default function ViewerPanel({ hash }: Props) {
   // status === "ready" and manifest is not null
   const manifest = viewer.manifest!;
   const photoCount = manifest.photos.length;
+  const reactionsEnabled = manifest.v === 2 && !!manifest.reactions;
 
   return (
     <main className="min-h-screen">
@@ -223,7 +224,7 @@ export default function ViewerPanel({ hash }: Props) {
         objectUrls={viewer.thumbUrls}
         loadThumbnail={viewer.loadThumbnail}
         onPhotoClick={handleOpenLightbox}
-        reactionsByPhoto={viewer.nsecBytes ? reactionsByPhoto : undefined}
+        reactionsByPhoto={reactionsEnabled && viewer.nsecBytes ? reactionsByPhoto : undefined}
       />
 
       {/* Lightbox */}
@@ -252,9 +253,9 @@ export default function ViewerPanel({ hash }: Props) {
           onImageLoaded={() => preloadAdjacent(lightboxIndex!)}
           onClose={() => setLightboxIndex(null)}
           onDownload={handleDownloadSingle}
-          reactionsByPhoto={viewer.nsecBytes ? reactionsByPhoto : undefined}
-          onReact={handleReact}
-          onComment={comment}
+          reactionsByPhoto={reactionsEnabled && viewer.nsecBytes ? reactionsByPhoto : undefined}
+          onReact={reactionsEnabled ? handleReact : undefined}
+          onComment={reactionsEnabled ? comment : undefined}
           onLoginRequest={() => setLoginOpen(true)}
           hasReacted={lightboxIndex !== null ? reactedHashes.has(manifest.photos[lightboxIndex]?.hash ?? '') : false}
         />
