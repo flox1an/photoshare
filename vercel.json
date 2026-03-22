@@ -1,5 +1,8 @@
 {
+  "buildCommand": "vite build",
+  "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/:naddr(naddr1[a-z0-9]+)", "destination": "/view/:naddr" }
+    { "source": "/:naddr(naddr1[a-z0-9]+)", "destination": "/view/:naddr" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
