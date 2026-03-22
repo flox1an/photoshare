@@ -20,6 +20,7 @@ export default function AnonNameDialog({
 }: AnonNameDialogProps) {
   const [name, setName] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const hasProfile = !!savedName;
 
   // Pre-fill when dialog opens
   useEffect(() => {
@@ -44,12 +45,25 @@ export default function AnonNameDialog({
     >
       <div className="w-full max-w-sm rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl p-6 space-y-5">
         <div>
-          <h2 className="text-base font-semibold text-zinc-100">Hello!</h2>
-          <p className="mt-1 text-sm text-zinc-400">
-            You are currently known as{' '}
-            <span className="font-medium text-zinc-200">{generatedName}</span>.
-            Want to use a different name?
-          </p>
+          {hasProfile ? (
+            <>
+              <h2 className="text-base font-semibold text-zinc-100">Change your name</h2>
+              <p className="mt-1 text-sm text-zinc-400">
+                Your current name is{' '}
+                <span className="font-medium text-zinc-200">{savedName}</span>.
+                Enter a new name below.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-base font-semibold text-zinc-100">Hello!</h2>
+              <p className="mt-1 text-sm text-zinc-400">
+                You are currently known as{' '}
+                <span className="font-medium text-zinc-200">{generatedName}</span>.
+                Want to use a different name?
+              </p>
+            </>
+          )}
         </div>
 
         <input
@@ -61,7 +75,7 @@ export default function AnonNameDialog({
             if (e.key === 'Enter') handleSave();
             if (e.key === 'Escape') onDismiss();
           }}
-          placeholder={generatedName}
+          placeholder={hasProfile ? savedName! : generatedName}
           maxLength={64}
           className="w-full rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 transition-colors"
         />
@@ -71,7 +85,7 @@ export default function AnonNameDialog({
             onClick={onDismiss}
             className="flex-1 rounded-lg border border-zinc-700 bg-transparent px-3 py-2 text-sm text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
           >
-            Keep {generatedName.split(' ')[0]}
+            {hasProfile ? 'Cancel' : `Keep ${generatedName.split(' ')[0]}`}
           </button>
           <button
             onClick={handleSave}
