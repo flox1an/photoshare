@@ -91,11 +91,13 @@ export async function uploadBlob(
   localHashHex: string,
   mimeType = "application/octet-stream",
 ): Promise<BlobDescriptor> {
+  const oneYearFromNow = Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60;
   const response = await fetch(`${serverUrl}/upload`, {
     method: "PUT",
     headers: {
       Authorization: authHeader,
       "Content-Type": mimeType,
+      "X-Expiration": String(oneYearFromNow),
     },
     body: ciphertext,
   });

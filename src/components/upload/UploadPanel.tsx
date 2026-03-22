@@ -103,12 +103,12 @@ export default function UploadPanel() {
           <DropZone onFiles={processBatch} isProcessing={isProcessing} />
         )}
 
-        {/* Settings panel — always visible below drop zone, collapsed by default */}
-        <SettingsPanel
+        {/* Settings panel — hidden during upload and after share link appears */}
+        {!isUploading && !shareLink && <SettingsPanel
           settings={settings}
           keepOriginals={settings.keepOriginals}
           onKeepOriginalsChange={settings.setKeepOriginals}
-        />
+        />}
 
         {/* Progress list — appears after first photo is added */}
         <ProgressList />
