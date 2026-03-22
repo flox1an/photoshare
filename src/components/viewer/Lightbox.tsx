@@ -132,7 +132,7 @@ export default function Lightbox({
   const resetHideTimer = useCallback(() => {
     setControlsVisible(true);
     if (hideTimer.current) clearTimeout(hideTimer.current);
-    hideTimer.current = setTimeout(() => setControlsVisible(false), 3000);
+    hideTimer.current = setTimeout(() => setControlsVisible(false), 2000);
   }, []);
 
   useEffect(() => {
