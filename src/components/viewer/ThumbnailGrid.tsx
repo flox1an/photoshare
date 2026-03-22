@@ -133,7 +133,7 @@ export default function ThumbnailGrid({
                     </div>
                     {reactionsByPhoto && (
                       <ReactionsBadge
-                        reactions={reactionsByPhoto.get(photo.hash)?.reactions.length ?? 0}
+                        hearts={reactionsByPhoto.get(photo.hash)?.reactions.length ?? 0}
                         comments={reactionsByPhoto.get(photo.hash)?.comments.length ?? 0}
                       />
                     )}

@@ -4,6 +4,7 @@ import { useGesture } from "@use-gesture/react";
 import type { PhotoEntry } from "@/types/album";
 import type { PhotoReactions } from "@/hooks/useReactions";
 import ReactionsPanel from "./ReactionsPanel";
+import HeartsOverlay from "./HeartsOverlay";
 
 interface LightboxProps {
   photos: PhotoEntry[];
@@ -19,9 +20,11 @@ interface LightboxProps {
   onImageLoaded?: () => void;
   /** Reactions data for the current photo — undefined when reactions not enabled */
   reactionsByPhoto?: Map<string, PhotoReactions>;
-  onReact?: (photoHash: string, content?: string) => Promise<void>;
+  onReact?: (photoHash: string) => Promise<void>;
   onComment?: (photoHash: string, text: string) => Promise<void>;
   onLoginRequest?: () => void;
+  /** Whether the current viewer has already reacted to the current photo */
+  hasReacted?: boolean;
 }
 
 export default function Lightbox({
@@ -38,6 +41,7 @@ export default function Lightbox({
   onReact,
   onComment,
   onLoginRequest,
+  hasReacted,
 }: LightboxProps) {
   const photo = photos[currentIndex];
   const [reactionsPanelOpen, setReactionsPanelOpen] = useState(false);
@@ -148,20 +152,19 @@ export default function Lightbox({
     >
       {/* Top-right controls */}
       <div className={`absolute top-4 right-4 z-10 flex items-center gap-2 transition-opacity duration-500 ${controlsVisible ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
-        {reactionsByPhoto && photo && (
+        {reactionsByPhoto && photo && onComment && (
           <button
             className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
             onClick={() => setReactionsPanelOpen((o) => !o)}
-            aria-label="Reactions and comments"
+            aria-label="Comments"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
             </svg>
-            {/* Dot indicator when there are reactions/comments */}
+            {/* Dot indicator when there are comments */}
             {(() => {
               const rd = reactionsByPhoto.get(photo.hash);
-              const total = (rd?.reactions.length ?? 0) + (rd?.comments.length ?? 0);
-              return total > 0 ? (
+              return (rd?.comments.length ?? 0) > 0 ? (
                 <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-zinc-300" />
               ) : null;
             })()}
@@ -187,15 +190,14 @@ export default function Lightbox({
         </button>
       </div>
 
-      {/* Reactions panel — desktop: right side panel; mobile: bottom sheet */}
-      {reactionsPanelOpen && photo && onReact && onComment && (
+      {/* Comments panel — desktop: right side panel; mobile: bottom sheet */}
+      {reactionsPanelOpen && photo && onComment && (
         <>
           {/* Desktop side panel */}
           <div className="absolute inset-y-0 right-0 z-20 hidden md:flex w-80 flex-col bg-zinc-950/95 border-l border-zinc-800 backdrop-blur-sm">
             <ReactionsPanel
               photoHash={photo.hash}
               reactions={reactionsByPhoto?.get(photo.hash)}
-              onReact={onReact}
               onComment={onComment}
               onLoginRequest={onLoginRequest ?? (() => {})}
               onClose={() => setReactionsPanelOpen(false)}
@@ -206,13 +208,24 @@ export default function Lightbox({
             <ReactionsPanel
               photoHash={photo.hash}
               reactions={reactionsByPhoto?.get(photo.hash)}
-              onReact={onReact}
               onComment={onComment}
               onLoginRequest={onLoginRequest ?? (() => {})}
               onClose={() => setReactionsPanelOpen(false)}
             />
           </div>
         </>
+      )}
+
+      {/* Hearts overlay — persistent bottom-left, always visible when reactions enabled */}
+      {reactionsByPhoto && photo && onReact && (
+        <div className="absolute bottom-10 left-4 z-10">
+          <HeartsOverlay
+            photoHash={photo.hash}
+            reactions={reactionsByPhoto.get(photo.hash)}
+            onReact={onReact}
+            hasReacted={hasReacted}
+          />
+        </div>
       )}
 
       {/* Photo counter */}

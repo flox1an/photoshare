@@ -16,6 +16,16 @@ export default function ViewerPanel({ hash }: Props) {
   const viewer = useAlbumViewer({ hash });
   const { reactionsByPhoto, react, comment } = useReactions(viewer.manifest, viewer.nsecBytes);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  // Optimistic set of photo hashes the current viewer has reacted to this session
+  const [reactedHashes, setReactedHashes] = useState<Set<string>>(new Set());
+
+  const handleReact = useCallback(
+    async (photoHash: string) => {
+      await react(photoHash);
+      setReactedHashes((prev) => new Set(prev).add(photoHash));
+    },
+    [react],
+  );
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const downloadMenuRef = useRef<HTMLDivElement>(null);
@@ -222,9 +232,10 @@ export default function ViewerPanel({ hash }: Props) {
           onClose={() => setLightboxIndex(null)}
           onDownload={handleDownloadSingle}
           reactionsByPhoto={viewer.nsecBytes ? reactionsByPhoto : undefined}
-          onReact={react}
+          onReact={handleReact}
           onComment={comment}
           onLoginRequest={() => setLoginOpen(true)}
+          hasReacted={lightboxIndex !== null ? reactedHashes.has(manifest.photos[lightboxIndex]?.hash ?? '') : false}
         />
       )}
 

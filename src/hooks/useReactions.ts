@@ -17,7 +17,6 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { getPublicKey } from 'nostr-tools';
 import { nsecToPubkey } from '@/lib/crypto';
 import { subscribeEvents, publishMethod } from '@/lib/nostr/relay';
 import {
@@ -42,8 +41,8 @@ export interface PhotoReactions {
 export interface UseReactionsReturn {
   /** Map from photo.hash → aggregated reactions and comments */
   reactionsByPhoto: Map<string, PhotoReactions>;
-  /** Send a reaction (kind 7) for a specific photo */
-  react: (photoHash: string, content?: string) => Promise<void>;
+  /** Send a ❤️ heart reaction (kind 7, content "+") for a specific photo */
+  react: (photoHash: string) => Promise<void>;
   /** Send a comment (kind 1) for a specific photo */
   comment: (photoHash: string, text: string) => Promise<void>;
   /** True while the initial relay subscription is establishing */
@@ -144,35 +143,22 @@ export function useReactions(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [albumPubkey, relays?.join(','), nsecBytes]);
 
-  const signer = useNostrAccountStore((s) => s.signer);
   const accountPubkey = useNostrAccountStore((s) => s.pubkey);
 
   const react = useCallback(
-    async (photoHash: string, content = '+') => {
+    async (photoHash: string) => {
       if (!nsecBytes || !albumPubkey || !relays || !manifest) return;
 
-      const manifestHash = ''; // manifest hash not available here; use empty for now
+      const manifestHash = '';
+      const ephemeral = generateEphemeralKeypair();
+      const senderPubkey = accountPubkey ?? ephemeral.pubkey;
+      const senderPrivkey = accountPubkey ? null : ephemeral.privkey;
 
-      let senderPrivkey: Uint8Array | null = null;
-      let senderPubkey: string;
-
-      if (signer && accountPubkey) {
-        // Identified: use real pubkey in rumor; seal still ephemeral (nip59.ts handles it)
-        senderPubkey = accountPubkey;
-        // We don't have access to the raw privkey from the account signer, so seal is ephemeral
-        senderPrivkey = null;
-      } else {
-        // Anonymous
-        const ephemeral = generateEphemeralKeypair();
-        senderPrivkey = ephemeral.privkey;
-        senderPubkey = ephemeral.pubkey;
-      }
-
-      const rumor = buildReactionRumor(photoHash, manifestHash, content, senderPubkey);
+      const rumor = buildReactionRumor(photoHash, manifestHash, '+', senderPubkey);
       const giftWrap = createGiftWrap(rumor, senderPrivkey, albumPubkey);
       await publishMethod(relays, giftWrap);
     },
-    [nsecBytes, albumPubkey, relays, manifest, signer, accountPubkey],
+    [nsecBytes, albumPubkey, relays, manifest, accountPubkey],
   );
 
   const comment = useCallback(
@@ -180,24 +166,15 @@ export function useReactions(
       if (!nsecBytes || !albumPubkey || !relays || !manifest || !text.trim()) return;
 
       const manifestHash = '';
-
-      let senderPrivkey: Uint8Array | null = null;
-      let senderPubkey: string;
-
-      if (signer && accountPubkey) {
-        senderPubkey = accountPubkey;
-        senderPrivkey = null;
-      } else {
-        const ephemeral = generateEphemeralKeypair();
-        senderPrivkey = ephemeral.privkey;
-        senderPubkey = ephemeral.pubkey;
-      }
+      const ephemeral = generateEphemeralKeypair();
+      const senderPubkey = accountPubkey ?? ephemeral.pubkey;
+      const senderPrivkey = accountPubkey ? null : ephemeral.privkey;
 
       const rumor = buildCommentRumor(photoHash, manifestHash, text.trim(), senderPubkey);
       const giftWrap = createGiftWrap(rumor, senderPrivkey, albumPubkey);
       await publishMethod(relays, giftWrap);
     },
-    [nsecBytes, albumPubkey, relays, manifest, signer, accountPubkey],
+    [nsecBytes, albumPubkey, relays, manifest, accountPubkey],
   );
 
   // If reactions not enabled, return inert state
