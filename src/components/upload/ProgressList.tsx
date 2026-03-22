@@ -23,7 +23,10 @@ export function ProgressList() {
   }).length;
   const total = entries.length;
 
-  const totalBytes = entries.reduce((sum, p) => sum + (p.fileSize ?? 0), 0);
+  const totalBytes = entries.reduce(
+    (sum, p) => sum + (p.result?.full.byteLength ?? 0) + (p.result?.thumb.byteLength ?? 0),
+    0,
+  );
   const totalSize = totalBytes >= 1024 * 1024 * 1024
     ? `${(totalBytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
     : `${(totalBytes / (1024 * 1024)).toFixed(1)} MB`;

@@ -38,7 +38,6 @@ export const useProcessingStore = create<ProcessingStoreState>((set) => ({
       newEntries[id] = {
         id,
         filename: file.name,
-        fileSize: file.size,
         status: 'pending',
       };
     });
