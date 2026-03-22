@@ -126,7 +126,7 @@ export default function Lightbox({
       if (e.key === "ArrowLeft") onPrev();
       if (e.key === "Escape") onClose();
       if (e.key === "l" && !isTyping && onReact && !hasReacted) { void onReact(photo.hash); resetHideTimer(); }
-      if (e.key === "c" && !isTyping) setReactionsPanelOpen((prev) => !prev);
+      if (e.key === "c" && !isTyping) { e.preventDefault(); setReactionsPanelOpen((prev) => !prev); }
       if (e.key === "f" && !isTyping) {
         if (!document.fullscreenElement) void document.documentElement.requestFullscreen();
         else void document.exitFullscreen();
