@@ -1,8 +1,10 @@
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useAlbumViewer } from "@/hooks/useAlbumViewer";
 import type { DownloadMode } from "@/hooks/useAlbumViewer";
 import { useReactions } from "@/hooks/useReactions";
+import { useNostrAccountStore } from "@/store/nostrAccountStore";
+import { getAnonKeypair } from "@/lib/nostr/anonIdentity";
 import ThumbnailGrid from "./ThumbnailGrid";
 import Lightbox from "./Lightbox";
 import DownloadProgress from "./DownloadProgress";
@@ -16,13 +18,32 @@ export default function ViewerPanel({ hash }: Props) {
   const viewer = useAlbumViewer({ hash });
   const { reactionsByPhoto, react, comment } = useReactions(viewer.manifest, viewer.nsecBytes);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  // Optimistic set of photo hashes the current viewer has reacted to this session
-  const [reactedHashes, setReactedHashes] = useState<Set<string>>(new Set());
+
+  // The pubkey that represents the current viewer (logged-in or persistent anon)
+  const accountPubkey = useNostrAccountStore((s) => s.pubkey);
+  const viewerPubkey = useMemo(
+    () => accountPubkey ?? getAnonKeypair().pubkey,
+    [accountPubkey],
+  );
+
+  // Build the set of photo hashes this viewer has already reacted to from relay data.
+  // Falls back to an optimistic local-only set for reactions sent this session.
+  const [localReactedHashes, setLocalReactedHashes] = useState<Set<string>>(new Set());
+
+  const reactedHashes = useMemo(() => {
+    const set = new Set(localReactedHashes);
+    reactionsByPhoto.forEach((data, photoHash) => {
+      if (data.reactions.some((r) => r.pubkey === viewerPubkey)) {
+        set.add(photoHash);
+      }
+    });
+    return set;
+  }, [reactionsByPhoto, viewerPubkey, localReactedHashes]);
 
   const handleReact = useCallback(
     async (photoHash: string) => {
       await react(photoHash);
-      setReactedHashes((prev) => new Set(prev).add(photoHash));
+      setLocalReactedHashes((prev) => new Set(prev).add(photoHash));
     },
     [react],
   );

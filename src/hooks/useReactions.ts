@@ -24,8 +24,8 @@ import {
   createGiftWrap,
   buildReactionRumor,
   buildCommentRumor,
-  generateEphemeralKeypair,
 } from '@/lib/nostr/nip59';
+import { getAnonKeypair } from '@/lib/nostr/anonIdentity';
 import { useNostrAccountStore } from '@/store/nostrAccountStore';
 import type { AlbumManifest } from '@/types/album';
 import type { UnwrappedRumor } from '@/lib/nostr/nip59';
@@ -150,9 +150,12 @@ export function useReactions(
       if (!nsecBytes || !albumPubkey || !relays || !manifest) return;
 
       const manifestHash = '';
-      const ephemeral = generateEphemeralKeypair();
-      const senderPubkey = accountPubkey ?? ephemeral.pubkey;
-      const senderPrivkey = accountPubkey ? null : ephemeral.privkey;
+      // Identified users use their real pubkey in the rumor (seal stays ephemeral).
+      // Anonymous visitors use their persistent stored keypair so reactions are
+      // consistent across page loads.
+      const anon = accountPubkey ? null : getAnonKeypair();
+      const senderPubkey = accountPubkey ?? anon!.pubkey;
+      const senderPrivkey = anon?.privkey ?? null;
 
       const rumor = buildReactionRumor(photoHash, manifestHash, '+', senderPubkey);
       const giftWrap = createGiftWrap(rumor, senderPrivkey, albumPubkey);
@@ -166,9 +169,9 @@ export function useReactions(
       if (!nsecBytes || !albumPubkey || !relays || !manifest || !text.trim()) return;
 
       const manifestHash = '';
-      const ephemeral = generateEphemeralKeypair();
-      const senderPubkey = accountPubkey ?? ephemeral.pubkey;
-      const senderPrivkey = accountPubkey ? null : ephemeral.privkey;
+      const anon = accountPubkey ? null : getAnonKeypair();
+      const senderPubkey = accountPubkey ?? anon!.pubkey;
+      const senderPrivkey = anon?.privkey ?? null;
 
       const rumor = buildCommentRumor(photoHash, manifestHash, text.trim(), senderPubkey);
       const giftWrap = createGiftWrap(rumor, senderPrivkey, albumPubkey);
