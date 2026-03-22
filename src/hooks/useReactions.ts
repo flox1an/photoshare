@@ -48,6 +48,12 @@ export interface UseReactionsReturn {
   comment: (photoHash: string, text: string) => Promise<void>;
   /** True while the initial relay subscription is establishing */
   loading: boolean;
+  /**
+   * The display name found in the album's gift wraps for viewerAnonPubkey,
+   * or null if no kind 0 was received. Only meaningful after loading = false.
+   * Use this to decide whether to publish / re-publish a profile.
+   */
+  seenAnonProfileName: string | null;
 }
 
 /** Deduplicate rumors by (kind, pubkey, content, created_at within 1s tolerance) */
@@ -70,9 +76,12 @@ function photoHashFromRumor(rumor: UnwrappedRumor): string | null {
 export function useReactions(
   manifest: AlbumManifest | null,
   nsecBytes: Uint8Array | null,
+  /** Anon pubkey of the current viewer — used to detect own profile in gift wraps */
+  viewerAnonPubkey?: string,
 ): UseReactionsReturn {
   const [reactionsByPhoto, setReactionsByPhoto] = useState<Map<string, PhotoReactions>>(new Map());
   const [loading, setLoading] = useState(false);
+  const [seenAnonProfileName, setSeenAnonProfileName] = useState<string | null>(null);
 
   // Derive album pubkey for relay query (memoised to a string so deps are stable)
   const albumPubkey =
@@ -92,6 +101,7 @@ export function useReactions(
     if (!albumPubkey || !relays || relays.length === 0 || !nsecBytes) return;
 
     setLoading(true);
+    setSeenAnonProfileName(null); // reset for new subscription
 
     const handleEvent = (event: NostrEvent) => {
       let rumor: UnwrappedRumor;
@@ -104,6 +114,15 @@ export function useReactions(
       // Profile events (kind 0) are signed — add to EventStore so useNostrProfile picks them up
       if (rumor.kind === 0) {
         eventStore.add(rumor as unknown as NostrEvent);
+        // Track if this is our own profile so callers can detect stale/missing profiles
+        if (viewerAnonPubkey && rumor.pubkey === viewerAnonPubkey) {
+          try {
+            const meta = JSON.parse(rumor.content) as { name?: string };
+            setSeenAnonProfileName(meta.name ?? null);
+          } catch {
+            setSeenAnonProfileName(null);
+          }
+        }
         return;
       }
 
@@ -217,8 +236,9 @@ export function useReactions(
       react: async () => {},
       comment: async () => {},
       loading: false,
+      seenAnonProfileName: null,
     };
   }
 
-  return { reactionsByPhoto, react, comment, loading };
+  return { reactionsByPhoto, react, comment, loading, seenAnonProfileName };
 }

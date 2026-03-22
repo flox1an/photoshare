@@ -49,24 +49,6 @@ export function markPrompted(): void {
   }
 }
 
-/** Returns true if we have already sent our profile gift wrap to this album pubkey. */
-export function hasProfileBeenSentToAlbum(albumPubkey: string): boolean {
-  try {
-    return localStorage.getItem(`photoshare:anon-profile-sent:${albumPubkey}`) === '1';
-  } catch {
-    return false;
-  }
-}
-
-/** Mark that our profile has been sent to this album pubkey. */
-export function markProfileSentToAlbum(albumPubkey: string): void {
-  try {
-    localStorage.setItem(`photoshare:anon-profile-sent:${albumPubkey}`, '1');
-  } catch {
-    // ignore
-  }
-}
-
 /**
  * Build and sign a kind 0 (profile metadata) event with the given name,
  * signed by the anon private key.

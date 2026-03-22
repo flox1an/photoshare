@@ -11,8 +11,6 @@ import {
   hasBeenPrompted,
   markPrompted,
   buildSignedProfileEvent,
-  hasProfileBeenSentToAlbum,
-  markProfileSentToAlbum,
 } from "@/lib/nostr/anonProfile";
 import { eventStore } from "@/lib/nostr/eventStore";
 import { createGiftWrap } from "@/lib/nostr/nip59";
@@ -33,15 +31,15 @@ interface Props {
 
 export default function ViewerPanel({ hash }: Props) {
   const viewer = useAlbumViewer({ hash });
-  const { reactionsByPhoto, react, comment, loading: reactionsLoading } = useReactions(viewer.manifest, viewer.nsecBytes);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   // The pubkey that represents the current viewer (logged-in or persistent anon)
   const accountPubkey = useNostrAccountStore((s) => s.pubkey);
-  const viewerPubkey = useMemo(
-    () => accountPubkey ?? getAnonKeypair().pubkey,
-    [accountPubkey],
-  );
+  const anonKeypair = useMemo(() => accountPubkey ? null : getAnonKeypair(), [accountPubkey]);
+  const viewerPubkey = anonKeypair?.pubkey ?? accountPubkey ?? '';
+
+  const { reactionsByPhoto, react, comment, loading: reactionsLoading, seenAnonProfileName } =
+    useReactions(viewer.manifest, viewer.nsecBytes, anonKeypair?.pubkey);
 
   // Build the set of photo hashes this viewer has already reacted to from relay data.
   // Falls back to an optimistic local-only set for reactions sent this session.
@@ -78,7 +76,6 @@ export default function ViewerPanel({ hash }: Props) {
           : undefined;
         const giftWrap = createGiftWrap(profileEvent, null, albumPubkey, expirationTs);
         await publishMethod(manifest.reactions.relays, giftWrap).catch(() => {});
-        markProfileSentToAlbum(albumPubkey);
       }
 
       setNameDialogOpen(false);
@@ -106,32 +103,37 @@ export default function ViewerPanel({ hash }: Props) {
   const [toastVisible, setToastVisible] = useState(false);
   const downloadMenuRef = useRef<HTMLDivElement>(null);
 
-  // When this album's reactions become ready, auto-publish our saved profile if this
-  // album hasn't received it yet (e.g. user joins a new album after already setting a name).
+  // After EOSE: if the album doesn't have our profile yet, or has a stale name, publish.
+  // Uses the relay data as source of truth — no separate localStorage tracking needed.
+  const profilePublishedRef = useRef(false);
   useEffect(() => {
-    const manifest = viewer.manifest;
-    const nsecBytes = viewer.nsecBytes;
-    if (accountPubkey) return; // logged-in users have real Nostr profiles
-    if (!manifest || manifest.v !== 2 || !manifest.reactions || !nsecBytes) return;
+    if (reactionsLoading) return; // wait for EOSE
+    if (accountPubkey || !anonKeypair) return; // logged-in users have real Nostr profiles
 
     const savedName = getAnonProfileName();
-    if (!savedName) return;
+    if (!savedName) return; // user hasn't set a name yet
+
+    // seenAnonProfileName is null if no kind 0 was found, or the name string if found
+    if (seenAnonProfileName === savedName) return; // relay already has the current name
+
+    if (profilePublishedRef.current) return; // already published this session
+    profilePublishedRef.current = true;
+
+    const manifest = viewer.manifest;
+    const nsecBytes = viewer.nsecBytes;
+    if (!manifest || manifest.v !== 2 || !manifest.reactions || !nsecBytes) return;
+
+    const profileEvent = buildSignedProfileEvent(savedName, anonKeypair.privkey);
+    eventStore.add(profileEvent as unknown as NostrEvent);
 
     const albumPubkey = nsecToPubkey(nsecBytes);
-    if (hasProfileBeenSentToAlbum(albumPubkey)) return;
-
-    const anon = getAnonKeypair();
-    const profileEvent = buildSignedProfileEvent(savedName, anon.privkey);
-    eventStore.add(profileEvent as unknown as NostrEvent);
-    markProfileSentToAlbum(albumPubkey);
-
     const expirationTs = manifest.expiresAt
       ? Math.floor(new Date(manifest.expiresAt).getTime() / 1000)
       : undefined;
     const giftWrap = createGiftWrap(profileEvent, null, albumPubkey, expirationTs);
     publishMethod(manifest.reactions.relays, giftWrap).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewer.manifest, viewer.nsecBytes, accountPubkey]);
+  }, [reactionsLoading, seenAnonProfileName, accountPubkey]);
 
   // Sync gridFullscreen with the browser's actual fullscreen state so Escape works
   useEffect(() => {
