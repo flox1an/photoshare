@@ -75,6 +75,10 @@ export default function Lightbox({
       if (e.key === "Escape") onClose();
       if (e.key === "l" && !isTyping && onReact && !hasReacted) void onReact(photo.hash);
       if (e.key === "c" && !isTyping) setReactionsPanelOpen((prev) => !prev);
+      if (e.key === "f" && !isTyping) {
+        if (!document.fullscreenElement) void document.documentElement.requestFullscreen();
+        else void document.exitFullscreen();
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
