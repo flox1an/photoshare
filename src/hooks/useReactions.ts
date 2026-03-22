@@ -145,14 +145,34 @@ export function useReactions(
 
   const accountPubkey = useNostrAccountStore((s) => s.pubkey);
 
+  const addOptimistic = useCallback((photoHash: string, rumor: UnwrappedRumor) => {
+    setReactionsByPhoto((prev) => {
+      const existing = prev.get(photoHash) ?? { reactions: [], comments: [] };
+      if (rumor.kind === 7) {
+        if (isDuplicate(existing.reactions, rumor)) return prev;
+        const next = new Map(prev);
+        next.set(photoHash, {
+          ...existing,
+          reactions: [...existing.reactions, rumor].sort((a, b) => a.created_at - b.created_at),
+        });
+        return next;
+      } else {
+        if (isDuplicate(existing.comments, rumor)) return prev;
+        const next = new Map(prev);
+        next.set(photoHash, {
+          ...existing,
+          comments: [...existing.comments, rumor].sort((a, b) => a.created_at - b.created_at),
+        });
+        return next;
+      }
+    });
+  }, []);
+
   const react = useCallback(
     async (photoHash: string) => {
       if (!nsecBytes || !albumPubkey || !relays || !manifest) return;
 
       const manifestHash = '';
-      // Identified users use their real pubkey in the rumor (seal stays ephemeral).
-      // Anonymous visitors use their persistent stored keypair so reactions are
-      // consistent across page loads.
       const anon = accountPubkey ? null : getAnonKeypair();
       const senderPubkey = accountPubkey ?? anon!.pubkey;
       const senderPrivkey = anon?.privkey ?? null;
@@ -160,8 +180,9 @@ export function useReactions(
       const rumor = buildReactionRumor(photoHash, manifestHash, '+', senderPubkey);
       const giftWrap = createGiftWrap(rumor, senderPrivkey, albumPubkey);
       await publishMethod(relays, giftWrap);
+      addOptimistic(photoHash, rumor);
     },
-    [nsecBytes, albumPubkey, relays, manifest, accountPubkey],
+    [nsecBytes, albumPubkey, relays, manifest, accountPubkey, addOptimistic],
   );
 
   const comment = useCallback(
@@ -176,8 +197,9 @@ export function useReactions(
       const rumor = buildCommentRumor(photoHash, manifestHash, text.trim(), senderPubkey);
       const giftWrap = createGiftWrap(rumor, senderPrivkey, albumPubkey);
       await publishMethod(relays, giftWrap);
+      addOptimistic(photoHash, rumor);
     },
-    [nsecBytes, albumPubkey, relays, manifest, accountPubkey],
+    [nsecBytes, albumPubkey, relays, manifest, accountPubkey, addOptimistic],
   );
 
   // If reactions not enabled, return inert state
