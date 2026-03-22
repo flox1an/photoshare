@@ -294,7 +294,7 @@ export default function Lightbox({
           {photo && thumbUrls[photo.thumbHash] && (
             <img
               src={thumbUrls[photo.thumbHash]}
-              className="absolute inset-0 w-full h-full object-contain blur-sm opacity-50"
+              className="absolute inset-0 w-full h-full object-contain blur-sm"
               alt=""
             />
           )}
