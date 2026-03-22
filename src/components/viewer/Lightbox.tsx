@@ -92,7 +92,26 @@ export default function Lightbox({
     },
   );
 
-  // Double-tap to zoom in/out
+  // Auto-hide controls after 3s of inactivity
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const resetHideTimer = useCallback(() => {
+    setControlsVisible(true);
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => setControlsVisible(false), 3000);
+  }, []);
+
+  useEffect(() => {
+    resetHideTimer();
+    const events = ["mousemove", "mousedown", "touchstart", "keydown"] as const;
+    events.forEach((e) => window.addEventListener(e, resetHideTimer));
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, resetHideTimer));
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    };
+  }, [resetHideTimer]);
+
   const lastTap = useRef(0);
   const handleDoubleTap = useCallback(() => {
     const now = Date.now();
@@ -116,7 +135,7 @@ export default function Lightbox({
       }}
     >
       {/* Top-right controls */}
-      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+      <div className={`absolute top-4 right-4 z-10 flex items-center gap-2 transition-opacity duration-500 ${controlsVisible ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
         <button
           className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
           onClick={() => onDownload(currentIndex)}
@@ -139,7 +158,7 @@ export default function Lightbox({
 
       {/* Photo counter */}
       {photos.length > 1 && (
-        <div className="absolute bottom-4 left-0 right-0 z-10 text-center pointer-events-none">
+        <div className={`absolute bottom-4 left-0 right-0 z-10 text-center pointer-events-none transition-opacity duration-500 ${controlsVisible ? "opacity-100" : "opacity-0"}`}>
           <span className="rounded-full bg-black/60 px-3 py-1 text-xs text-zinc-400 font-mono">
             {currentIndex + 1} / {photos.length}
           </span>
@@ -149,7 +168,7 @@ export default function Lightbox({
       {/* Left arrow */}
       {currentIndex > 0 && (
         <button
-          className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+          className={`absolute left-3 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-[opacity,colors] duration-500 ${controlsVisible ? "opacity-100" : "opacity-0 pointer-events-none"}`}
           onClick={onPrev}
           aria-label="Previous"
         >
@@ -162,7 +181,7 @@ export default function Lightbox({
       {/* Right arrow */}
       {currentIndex < photos.length - 1 && (
         <button
-          className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+          className={`absolute right-3 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-[opacity,colors] duration-500 ${controlsVisible ? "opacity-100" : "opacity-0 pointer-events-none"}`}
           onClick={onNext}
           aria-label="Next"
         >
