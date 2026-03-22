@@ -68,13 +68,17 @@ export default function Lightbox({
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      const isTyping = tag === "INPUT" || tag === "TEXTAREA";
       if (e.key === "ArrowRight") onNext();
       if (e.key === "ArrowLeft") onPrev();
       if (e.key === "Escape") onClose();
+      if (e.key === "l" && !isTyping && onReact && !hasReacted) void onReact(photo.hash);
+      if (e.key === "c" && !isTyping) setReactionsPanelOpen((prev) => !prev);
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [onNext, onPrev, onClose]);
+  }, [onNext, onPrev, onClose, onReact, hasReacted, photo]);
 
   // Lock body scroll while lightbox is open
   useEffect(() => {
