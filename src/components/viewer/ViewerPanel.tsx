@@ -49,7 +49,30 @@ export default function ViewerPanel({ hash }: Props) {
   );
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [gridFullscreen, setGridFullscreen] = useState(false);
   const downloadMenuRef = useRef<HTMLDivElement>(null);
+
+  // Sync gridFullscreen with the browser's actual fullscreen state so Escape works
+  useEffect(() => {
+    const handler = () => setGridFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
+  const toggleGridFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) void document.documentElement.requestFullscreen();
+    else void document.exitFullscreen();
+  }, []);
+
+  // F key toggles grid fullscreen when the lightbox is not open
+  useEffect(() => {
+    if (lightboxIndex !== null) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "f") toggleGridFullscreen();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [lightboxIndex, toggleGridFullscreen]);
 
   useEffect(() => {
     if (!downloadMenuOpen) return;
@@ -145,8 +168,8 @@ export default function ViewerPanel({ hash }: Props) {
 
   return (
     <main className="min-h-screen">
-      {/* Gallery header */}
-      <header className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+      {/* Gallery header — hidden in fullscreen */}
+      <header className={`flex items-center justify-between px-5 py-4 border-b border-zinc-800${gridFullscreen ? " hidden" : ""}`}>
         <div>
           <h1 className="text-lg font-semibold tracking-tight text-zinc-100">
             {manifest.title ?? "Photo Album"}
@@ -155,6 +178,17 @@ export default function ViewerPanel({ hash }: Props) {
             {photoCount} {photoCount === 1 ? "photo" : "photos"}
           </p>
         </div>
+        <div className="flex items-center gap-2">
+        {/* Fullscreen toggle button */}
+        <button
+          onClick={toggleGridFullscreen}
+          aria-label="Toggle fullscreen"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+          </svg>
+        </button>
         {/* Download icon button */}
         <div ref={downloadMenuRef} className="relative">
           <button
@@ -195,10 +229,11 @@ export default function ViewerPanel({ hash }: Props) {
             </div>
           )}
         </div>
+        </div>
       </header>
 
-      {/* Download progress bar */}
-      {viewer.downloadProgress !== null && (
+      {/* Download progress bar — hidden in fullscreen */}
+      {!gridFullscreen && viewer.downloadProgress !== null && (
         <DownloadProgress
           current={viewer.downloadProgress.current}
           total={viewer.downloadProgress.total}
