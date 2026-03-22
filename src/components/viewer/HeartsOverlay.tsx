@@ -22,14 +22,14 @@ export default function HeartsOverlay({
     <button
       onClick={() => void onReact(photoHash)}
       aria-label={hasReacted ? 'Liked' : 'Like'}
-      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors select-none
+      className={`flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors select-none
         ${hasReacted
           ? 'bg-rose-500/30 text-rose-300 hover:bg-rose-500/40'
-          : 'bg-black/40 text-white/80 hover:bg-black/60'
+          : 'bg-white/10 text-white hover:bg-white/20'
         }`}
     >
       <svg
-        className="w-4 h-4 shrink-0"
+        className="w-5 h-5 shrink-0"
         viewBox="0 0 24 24"
         fill={hasReacted ? 'currentColor' : 'none'}
         stroke="currentColor"

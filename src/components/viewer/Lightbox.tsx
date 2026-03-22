@@ -152,6 +152,14 @@ export default function Lightbox({
     >
       {/* Top-right controls */}
       <div className={`absolute top-4 right-4 z-10 flex items-center gap-2 transition-opacity duration-500 ${controlsVisible ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+        {reactionsByPhoto && photo && onReact && (
+          <HeartsOverlay
+            photoHash={photo.hash}
+            reactions={reactionsByPhoto.get(photo.hash)}
+            onReact={onReact}
+            hasReacted={hasReacted}
+          />
+        )}
         {reactionsByPhoto && photo && onComment && (
           <button
             className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
@@ -214,18 +222,6 @@ export default function Lightbox({
             />
           </div>
         </>
-      )}
-
-      {/* Hearts overlay — persistent bottom-left, always visible when reactions enabled */}
-      {reactionsByPhoto && photo && onReact && (
-        <div className="absolute bottom-10 left-4 z-10">
-          <HeartsOverlay
-            photoHash={photo.hash}
-            reactions={reactionsByPhoto.get(photo.hash)}
-            onReact={onReact}
-            hasReacted={hasReacted}
-          />
-        </div>
       )}
 
       {/* Photo counter */}
