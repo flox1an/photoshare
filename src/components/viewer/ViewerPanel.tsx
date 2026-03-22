@@ -155,32 +155,19 @@ export default function ViewerPanel({ hash }: Props) {
             {photoCount} {photoCount === 1 ? "photo" : "photos"}
           </p>
         </div>
-        {/* Download button with format picker */}
+        {/* Download icon button */}
         <div ref={downloadMenuRef} className="relative">
-          <div className="flex items-stretch">
-            <button
-              onClick={() => handleDownloadAll(viewer.isIOS ? 'zip' : 'files')}
-              disabled={viewer.downloadProgress !== null}
-              className="flex items-center gap-1.5 rounded-l-lg border border-r-0 border-zinc-700 bg-zinc-800 px-4 py-2 text-xs font-medium text-zinc-300
-                hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-              </svg>
-              Download all
-            </button>
-            <button
-              onClick={() => setDownloadMenuOpen(o => !o)}
-              disabled={viewer.downloadProgress !== null}
-              aria-label="Choose download format"
-              className="flex items-center justify-center rounded-r-lg border border-zinc-700 bg-zinc-800 px-2 py-2 text-zinc-300
-                hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-              </svg>
-            </button>
-          </div>
+          <button
+            onClick={() => setDownloadMenuOpen(o => !o)}
+            disabled={viewer.downloadProgress !== null}
+            aria-label="Download"
+            className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+              ${downloadMenuOpen ? 'bg-zinc-700 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white'}`}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+          </button>
 
           {downloadMenuOpen && (
             <div className="absolute right-0 top-full mt-1 z-20 w-44 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl py-1">
