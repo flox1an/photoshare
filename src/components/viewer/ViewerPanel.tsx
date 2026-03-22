@@ -11,6 +11,8 @@ import {
   hasBeenPrompted,
   markPrompted,
   buildSignedProfileEvent,
+  hasProfileBeenSentToAlbum,
+  markProfileSentToAlbum,
 } from "@/lib/nostr/anonProfile";
 import { eventStore } from "@/lib/nostr/eventStore";
 import { createGiftWrap } from "@/lib/nostr/nip59";
@@ -76,6 +78,7 @@ export default function ViewerPanel({ hash }: Props) {
           : undefined;
         const giftWrap = createGiftWrap(profileEvent, null, albumPubkey, expirationTs);
         await publishMethod(manifest.reactions.relays, giftWrap).catch(() => {});
+        markProfileSentToAlbum(albumPubkey);
       }
 
       setNameDialogOpen(false);
@@ -102,6 +105,33 @@ export default function ViewerPanel({ hash }: Props) {
   const [nameDialogOpen, setNameDialogOpen] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const downloadMenuRef = useRef<HTMLDivElement>(null);
+
+  // When this album's reactions become ready, auto-publish our saved profile if this
+  // album hasn't received it yet (e.g. user joins a new album after already setting a name).
+  useEffect(() => {
+    const manifest = viewer.manifest;
+    const nsecBytes = viewer.nsecBytes;
+    if (accountPubkey) return; // logged-in users have real Nostr profiles
+    if (!manifest || manifest.v !== 2 || !manifest.reactions || !nsecBytes) return;
+
+    const savedName = getAnonProfileName();
+    if (!savedName) return;
+
+    const albumPubkey = nsecToPubkey(nsecBytes);
+    if (hasProfileBeenSentToAlbum(albumPubkey)) return;
+
+    const anon = getAnonKeypair();
+    const profileEvent = buildSignedProfileEvent(savedName, anon.privkey);
+    eventStore.add(profileEvent as unknown as NostrEvent);
+    markProfileSentToAlbum(albumPubkey);
+
+    const expirationTs = manifest.expiresAt
+      ? Math.floor(new Date(manifest.expiresAt).getTime() / 1000)
+      : undefined;
+    const giftWrap = createGiftWrap(profileEvent, null, albumPubkey, expirationTs);
+    publishMethod(manifest.reactions.relays, giftWrap).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewer.manifest, viewer.nsecBytes, accountPubkey]);
 
   // Sync gridFullscreen with the browser's actual fullscreen state so Escape works
   useEffect(() => {
