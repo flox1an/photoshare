@@ -117,11 +117,12 @@ export default function ViewerPanel({ hash }: Props) {
     if (seenAnonProfileName === savedName) return; // relay already has the current name
 
     if (profilePublishedRef.current) return; // already published this session
-    profilePublishedRef.current = true;
 
     const manifest = viewer.manifest;
     const nsecBytes = viewer.nsecBytes;
     if (!manifest || manifest.v !== 2 || !manifest.reactions || !nsecBytes) return;
+
+    profilePublishedRef.current = true; // only lock after we know we can actually publish
 
     const profileEvent = buildSignedProfileEvent(savedName, anonKeypair.privkey);
     eventStore.add(profileEvent as unknown as NostrEvent);
