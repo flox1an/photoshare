@@ -33,6 +33,7 @@ vi.mock('@/lib/blossom/manifest', () => ({
 
 vi.mock('@/store/uploadStore', () => ({
   useUploadStore: vi.fn().mockReturnValue({
+    addPhoto: vi.fn(),
     setEncrypting: vi.fn(),
     setUploading: vi.fn(),
     setUploadDone: vi.fn(),
@@ -54,6 +55,8 @@ const mockUploadBlob = uploadBlob as ReturnType<typeof vi.fn>;
 const mockEncryptManifest = encryptManifest as ReturnType<typeof vi.fn>;
 const mockExportKeyToBase64url = exportKeyToBase64url as ReturnType<typeof vi.fn>;
 
+import type { UploadItem } from '@/hooks/useUpload';
+
 /** A minimal ProcessedPhoto for testing */
 function makePhoto(index = 0) {
   return {
@@ -65,6 +68,13 @@ function makePhoto(index = 0) {
     mimeType: 'image/webp',
     thumbhash: 'abc123thumbhashbase64==',
   };
+}
+
+/** Wrap photos as UploadItems in an AsyncIterable */
+async function* asItems(photos: ReturnType<typeof makePhoto>[]): AsyncIterable<UploadItem> {
+  for (let i = 0; i < photos.length; i++) {
+    yield { photo: photos[i], photoId: `photo-${i}`, originalFile: null };
+  }
 }
 
 /** A minimal BlobDescriptor */
@@ -116,7 +126,7 @@ describe('useUpload — Blossom-only manifest upload', () => {
     const { result } = renderHook(() => useUpload());
 
     await act(async () => {
-      await result.current.startUpload([makePhoto(0)], { blossomServers: [BLOSSOM_SERVER] });
+      await result.current.startUpload(asItems([makePhoto(0)]), { blossomServers: [BLOSSOM_SERVER] });
     });
 
     // 2 calls per photo: full + thumb
@@ -129,7 +139,7 @@ describe('useUpload — Blossom-only manifest upload', () => {
     const { result } = renderHook(() => useUpload());
 
     await act(async () => {
-      await result.current.startUpload([makePhoto(0)], { blossomServers: [BLOSSOM_SERVER] });
+      await result.current.startUpload(asItems([makePhoto(0)]), { blossomServers: [BLOSSOM_SERVER] });
     });
 
     // 3 calls: full hash, thumb hash, manifest hash
@@ -168,7 +178,7 @@ describe('useUpload — Blossom-only manifest upload', () => {
     const { result } = renderHook(() => useUpload());
 
     await act(async () => {
-      await result.current.startUpload([makePhoto(0), makePhoto(1)], { blossomServers: [BLOSSOM_SERVER] });
+      await result.current.startUpload(asItems([makePhoto(0), makePhoto(1)]), { blossomServers: [BLOSSOM_SERVER] });
     });
 
     // 2 photos × 2 blobs each + 1 manifest = 5 upload calls
@@ -182,7 +192,7 @@ describe('useUpload — Blossom-only manifest upload', () => {
     const { result } = renderHook(() => useUpload());
 
     await act(async () => {
-      await result.current.startUpload([makePhoto(0)], { blossomServers: [BLOSSOM_SERVER] });
+      await result.current.startUpload(asItems([makePhoto(0)]), { blossomServers: [BLOSSOM_SERVER] });
     });
 
     const link = result.current.shareLink;
@@ -203,7 +213,7 @@ describe('useUpload — Blossom-only manifest upload', () => {
     const { result } = renderHook(() => useUpload());
 
     await act(async () => {
-      await result.current.startUpload([makePhoto(0)], { blossomServers: [BLOSSOM_SERVER] });
+      await result.current.startUpload(asItems([makePhoto(0)]), { blossomServers: [BLOSSOM_SERVER] });
     });
 
     expect(result.current.publishError).toBe(
@@ -219,7 +229,7 @@ describe('useUpload — Blossom-only manifest upload', () => {
     const { result } = renderHook(() => useUpload());
 
     await act(async () => {
-      await result.current.startUpload([makePhoto(0)], { blossomServers: [BLOSSOM_SERVER] });
+      await result.current.startUpload(asItems([makePhoto(0)]), { blossomServers: [BLOSSOM_SERVER] });
     });
 
     // manifest should never be encrypted or uploaded

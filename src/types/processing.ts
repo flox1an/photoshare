@@ -12,6 +12,8 @@ export interface PhotoProcessingState {
   id: string;
   /** Original filename (e.g. IMG_2847.HEIC) */
   filename: string;
+  /** Original file size in bytes — set at queue time from File.size */
+  fileSize?: number;
   status: PhotoProcessingStatus;
   /** Set when status === 'error' */
   error?: string;

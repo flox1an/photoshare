@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { nip19 } from 'nostr-tools';
 import { useImageProcessor } from '@/hooks/useImageProcessor';
 import { useUpload } from '@/hooks/useUpload';
@@ -13,6 +13,56 @@ import { ProgressList } from './ProgressList';
 import { SettingsPanel } from './SettingsPanel';
 import { ShareCard } from './ShareCard';
 import { LoginDialog } from '@/components/auth/LoginDialog';
+import type { UploadItem } from '@/hooks/useUpload';
+
+// ---------------------------------------------------------------------------
+// Deferred async queue — buffers items until the async consumer is ready.
+// Push photos as they finish processing; close when all are done.
+// ---------------------------------------------------------------------------
+interface DeferredQueue<T> {
+  push: (item: T) => void;
+  close: () => void;
+  [Symbol.asyncIterator]: () => AsyncIterator<T>;
+}
+
+function createDeferredQueue<T>(): DeferredQueue<T> {
+  const buffer: T[] = [];
+  const resolvers: Array<(result: IteratorResult<T>) => void> = [];
+  let closed = false;
+
+  const push = (item: T) => {
+    if (resolvers.length > 0) {
+      resolvers.shift()!({ value: item, done: false });
+    } else {
+      buffer.push(item);
+    }
+  };
+
+  const close = () => {
+    closed = true;
+    while (resolvers.length > 0) {
+      resolvers.shift()!({ value: undefined as unknown as T, done: true });
+    }
+  };
+
+  return {
+    push,
+    close,
+    [Symbol.asyncIterator]: () => ({
+      next(): Promise<IteratorResult<T>> {
+        if (buffer.length > 0) {
+          return Promise.resolve({ value: buffer.shift()!, done: false });
+        }
+        if (closed) {
+          return Promise.resolve({ value: undefined as unknown as T, done: true });
+        }
+        return new Promise((resolve) => resolvers.push(resolve));
+      },
+    }),
+  };
+}
+
+// ---------------------------------------------------------------------------
 
 function formatNpub(pubkey: string): string {
   const npub = nip19.npubEncode(pubkey);
@@ -30,27 +80,73 @@ export default function UploadPanel() {
   const logout = useNostrAccountStore((state) => state.logout);
   const profile = useNostrProfile(pubkey);
 
-  // Collect ProcessedPhoto results for photos that finished processing
+  // Ref to the active upload queue — created on Upload click, fed by the effect below.
+  const queueRef = useRef<DeferredQueue<UploadItem> | null>(null);
+  // Tracks which photo IDs have already been pushed into the queue.
+  const sentIdsRef = useRef<Set<string>>(new Set());
+
+  // As photos finish processing during an active upload, push them into the queue.
+  useEffect(() => {
+    if (!isUploading || !queueRef.current) return;
+
+    const allPhotosArray = Object.values(photos);
+
+    for (const p of allPhotosArray) {
+      if (p.status === 'done' && p.result && !sentIdsRef.current.has(p.id)) {
+        sentIdsRef.current.add(p.id);
+        queueRef.current.push({
+          photo: p.result,
+          photoId: p.id,
+          originalFile: settings.keepOriginals ? (fileMap.get(p.id) ?? null) : null,
+        });
+      }
+    }
+
+    // Close the queue once all photos have reached a terminal state.
+    const allTerminal = allPhotosArray.every(
+      (p) => p.status === 'done' || p.status === 'error',
+    );
+    if (allTerminal) {
+      queueRef.current.close();
+    }
+  }, [photos, isUploading, settings.keepOriginals, fileMap]);
+
   const processedPhotos = Object.values(photos).filter((p) => p.status === 'done' && p.result);
-  // All photos must be done processing before the Upload button appears
-  const allDone = processedPhotos.length > 0 && processedPhotos.length === Object.keys(photos).length;
-  const showUploadButton = allDone && !isUploading && !shareLink;
+  const totalPhotos = Object.keys(photos).length;
+
+  // Show the Upload button as soon as at least one photo is ready.
+  const showUploadButton = processedPhotos.length > 0 && !isUploading && !shareLink;
 
   const handleUpload = () => {
-    const photosToUpload = processedPhotos
-      .map((p) => p.result!)
-      .filter(Boolean);
-    const photoIds = processedPhotos.map((p) => p.id);
-    const originalFiles = settings.keepOriginals
-      ? processedPhotos.map((p) => fileMap.get(p.id) ?? null)
-      : undefined;
-    void startUpload(photosToUpload, {
+    const queue = createDeferredQueue<UploadItem>();
+    queueRef.current = queue;
+    sentIdsRef.current = new Set();
+
+    // Push all currently-done photos into the queue right away.
+    for (const p of Object.values(photos)) {
+      if (p.status === 'done' && p.result) {
+        sentIdsRef.current.add(p.id);
+        queue.push({
+          photo: p.result,
+          photoId: p.id,
+          originalFile: settings.keepOriginals ? (fileMap.get(p.id) ?? null) : null,
+        });
+      }
+    }
+
+    // If nothing is still processing, close the queue immediately.
+    const allTerminal = Object.values(photos).every(
+      (p) => p.status === 'done' || p.status === 'error',
+    );
+    if (allTerminal) {
+      queue.close();
+    }
+
+    void startUpload(queue, {
       blossomServers: settings.blossomServers,
       title: albumTitle || undefined,
-      keepOriginals: settings.keepOriginals,
-      originalFiles,
       expirationSeconds: settings.expiration,
-    }, photoIds);
+    });
   };
 
   return (
@@ -116,7 +212,7 @@ export default function UploadPanel() {
         {/* Progress list — appears after first photo is added */}
         <ProgressList />
 
-        {/* Album title + Upload button */}
+        {/* Album title + Upload button — visible as soon as the first photo is ready */}
         {showUploadButton && (
           <div className="mt-5 space-y-3">
             <input
@@ -131,7 +227,9 @@ export default function UploadPanel() {
               onClick={handleUpload}
               className="w-full rounded-lg bg-zinc-100 px-4 py-3 text-sm font-medium text-zinc-900 hover:bg-white active:bg-zinc-200 transition-colors"
             >
-              Upload {processedPhotos.length} photo{processedPhotos.length !== 1 ? 's' : ''}
+              {isProcessing
+                ? `Upload · ${processedPhotos.length} / ${totalPhotos} ready`
+                : `Upload ${processedPhotos.length} photo${processedPhotos.length !== 1 ? 's' : ''}`}
             </button>
           </div>
         )}

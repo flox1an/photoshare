@@ -23,11 +23,17 @@ export function ProgressList() {
   }).length;
   const total = entries.length;
 
+  const totalBytes = entries.reduce((sum, p) => sum + (p.fileSize ?? 0), 0);
+  const totalSize = totalBytes >= 1024 * 1024 * 1024
+    ? `${(totalBytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+    : `${(totalBytes / (1024 * 1024)).toFixed(1)} MB`;
+
   return (
     <div className="mt-5 w-full">
       <div className="mb-2 flex items-center justify-between text-xs text-zinc-500">
         <span>
           {done}/{total} {isUploadPhase ? 'uploaded' : 'processed'}
+          {totalBytes > 0 && <span className="ml-2 text-zinc-600">· {totalSize}</span>}
           {errors > 0 && <span className="ml-2 text-red-400">{errors} failed</span>}
         </span>
         {done === total && total > 0 && (
