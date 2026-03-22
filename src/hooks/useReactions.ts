@@ -26,6 +26,7 @@ import {
   buildCommentRumor,
 } from '@/lib/nostr/nip59';
 import { getAnonKeypair } from '@/lib/nostr/anonIdentity';
+import { eventStore } from '@/lib/nostr/eventStore';
 import { useNostrAccountStore } from '@/store/nostrAccountStore';
 import type { AlbumManifest } from '@/types/album';
 import type { UnwrappedRumor } from '@/lib/nostr/nip59';
@@ -97,6 +98,12 @@ export function useReactions(
       try {
         rumor = unwrapGiftWrap(event, nsecBytes);
       } catch {
+        return;
+      }
+
+      // Profile events (kind 0) are signed — add to EventStore so useNostrProfile picks them up
+      if (rumor.kind === 0) {
+        eventStore.add(rumor as unknown as NostrEvent);
         return;
       }
 

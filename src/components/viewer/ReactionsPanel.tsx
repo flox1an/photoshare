@@ -6,6 +6,7 @@ import { useNostrAccountStore } from '@/store/nostrAccountStore';
 import { useNostrProfile, profileDisplayName } from '@/hooks/useNostrProfile';
 import { anonDisplayName } from '@/lib/anonName';
 import { getAnonKeypair } from '@/lib/nostr/anonIdentity';
+import { getAnonProfileName } from '@/lib/nostr/anonProfile';
 import ProfileAvatar from './ProfileAvatar';
 import type { PhotoReactions } from '@/hooks/useReactions';
 import type { UnwrappedRumor } from '@/lib/nostr/nip59';
@@ -16,6 +17,7 @@ interface ReactionsPanelProps {
   loading?: boolean;
   onComment: (photoHash: string, text: string) => Promise<void>;
   onLoginRequest: () => void;
+  onEditName?: () => void;
   onClose: () => void;
 }
 
@@ -71,6 +73,7 @@ export default function ReactionsPanel({
   loading,
   onComment,
   onLoginRequest,
+  onEditName,
   onClose,
 }: ReactionsPanelProps) {
   const [commentText, setCommentText] = useState('');
@@ -176,15 +179,32 @@ export default function ReactionsPanel({
             </button>
           </p>
         ) : (
-          <p className="text-[10px] text-zinc-600">
-            Commenting anonymously as <span className="text-zinc-500">{anonDisplayName(getAnonKeypair().pubkey)}</span>.{' '}
+          <p className="text-[10px] text-zinc-600 flex items-center gap-1 flex-wrap">
+            <span>
+              Posting as{' '}
+              <span className="text-zinc-400 font-medium">
+                {getAnonProfileName() ?? anonDisplayName(getAnonKeypair().pubkey)}
+              </span>
+            </span>
+            {onEditName && (
+              <button
+                onClick={onEditName}
+                className="text-zinc-500 hover:text-zinc-300 transition-colors"
+                aria-label="Change display name"
+                title="Change display name"
+              >
+                <svg className="w-3 h-3 inline" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                </svg>
+              </button>
+            )}
+            <span className="text-zinc-600">·</span>
             <button
               onClick={onLoginRequest}
-              className="text-zinc-400 hover:text-zinc-200 underline underline-offset-2 transition-colors"
+              className="text-zinc-500 hover:text-zinc-300 underline underline-offset-2 transition-colors"
             >
               Sign in
-            </button>{' '}
-            to identify yourself.
+            </button>
           </p>
         )}
       </div>

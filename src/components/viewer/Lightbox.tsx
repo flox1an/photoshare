@@ -24,6 +24,7 @@ interface LightboxProps {
   onReact?: (photoHash: string) => Promise<void>;
   onComment?: (photoHash: string, text: string) => Promise<void>;
   onLoginRequest?: () => void;
+  onEditName?: () => void;
   /** Whether the current viewer has already reacted to the current photo */
   hasReacted?: boolean;
 }
@@ -43,6 +44,7 @@ export default function Lightbox({
   onReact,
   onComment,
   onLoginRequest,
+  onEditName,
   hasReacted,
 }: LightboxProps) {
   const photo = photos[currentIndex];
@@ -225,6 +227,7 @@ export default function Lightbox({
               loading={reactionsLoading}
               onComment={onComment}
               onLoginRequest={onLoginRequest ?? (() => {})}
+              onEditName={onEditName}
               onClose={() => setReactionsPanelOpen(false)}
             />
           </div>
@@ -236,6 +239,7 @@ export default function Lightbox({
               loading={reactionsLoading}
               onComment={onComment}
               onLoginRequest={onLoginRequest ?? (() => {})}
+              onEditName={onEditName}
               onClose={() => setReactionsPanelOpen(false)}
             />
           </div>

@@ -34,8 +34,18 @@ export interface CommentRumor extends Rumor {
   kind: 1;
 }
 
+/**
+ * Profile rumor — kind 0, signed by the anon key.
+ * Has id + sig unlike regular rumors, so it can be added to the EventStore.
+ */
+export interface ProfileRumor extends Rumor {
+  kind: 0;
+  id: string;
+  sig: string;
+}
+
 /** Unwrapped payload returned from unwrapGiftWrap */
-export type UnwrappedRumor = ReactionRumor | CommentRumor;
+export type UnwrappedRumor = ReactionRumor | CommentRumor | ProfileRumor;
 
 /** Jitter timestamp ±2 days per NIP-59 to prevent timing correlation */
 function jitteredTime(): number {
@@ -129,7 +139,7 @@ export function unwrapGiftWrap(
   const rumorJson = nip44.v2.decrypt(seal.content, sealConvKey);
   const rumor = JSON.parse(rumorJson) as Rumor;
 
-  if (rumor.kind !== 7 && rumor.kind !== 1) {
+  if (rumor.kind !== 7 && rumor.kind !== 1 && rumor.kind !== 0) {
     throw new Error(`Unexpected rumor kind ${rumor.kind}`);
   }
 
