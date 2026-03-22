@@ -31,3 +31,16 @@ export function subscriptionMethod(relays: string[], filters: Filter[]): Observa
 export async function publishMethod(relays: string[], event: NostrEvent): Promise<void> {
   await Promise.allSettled(pool.publish(relays, event))
 }
+
+/**
+ * Subscribe to events matching a filter.
+ * Returns an unsubscribe function. Used by useReactions.
+ */
+export function subscribeEvents(
+  relays: string[],
+  filter: Filter,
+  onevent: (event: NostrEvent) => void,
+): () => void {
+  const sub = pool.subscribeMany(relays, [filter], { onevent })
+  return () => sub.close()
+}

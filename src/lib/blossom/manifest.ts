@@ -1,5 +1,5 @@
 import { encryptBlob, decryptBlob } from "@/lib/crypto";
-import type { AlbumManifest, PhotoEntry } from "@/types/album";
+import type { AlbumManifest, AlbumReactionConfig, PhotoEntry } from "@/types/album";
 
 /**
  * Encrypt an AlbumManifest to an IV-prepended blob ready for Blossom upload.
@@ -16,11 +16,12 @@ export async function encryptManifest(
  * Decrypt an IV-prepended blob and validate it as an AlbumManifest.
  *
  * Validation rules:
- * - v must be 1
+ * - v must be 1 or 2
  * - createdAt must be a non-empty string
  * - photos must be an array
  * - each photo must have: hash (64-char hex), thumbHash (64-char hex),
  *   width (positive), height (positive), filename (non-empty string)
+ * - v2: reactions field (if present) must have a relays string array
  *
  * @throws Error on decryption failure, unsupported version, or invalid structure
  */
@@ -40,7 +41,7 @@ export async function decryptAndValidateManifest(
 
   const obj = parsed as Record<string, unknown>;
 
-  if (obj.v !== 1) {
+  if (obj.v !== 1 && obj.v !== 2) {
     throw new Error(`Unsupported album version: ${obj.v}`);
   }
 
@@ -66,10 +67,22 @@ export async function decryptAndValidateManifest(
     }
   }
 
-  return {
-    v: 1,
+  const base = {
     ...(typeof obj.title === "string" ? { title: obj.title } : {}),
     createdAt: String(obj.createdAt),
     photos: obj.photos as PhotoEntry[],
   };
+
+  if (obj.v === 2) {
+    let reactions: AlbumReactionConfig | undefined;
+    if (obj.reactions !== undefined && obj.reactions !== null) {
+      const r = obj.reactions as Record<string, unknown>;
+      if (Array.isArray(r.relays) && r.relays.every((x) => typeof x === "string")) {
+        reactions = { relays: r.relays as string[] };
+      }
+    }
+    return { v: 2, ...base, ...(reactions ? { reactions } : {}) };
+  }
+
+  return { v: 1, ...base };
 }

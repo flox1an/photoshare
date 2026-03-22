@@ -2,9 +2,11 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useAlbumViewer } from "@/hooks/useAlbumViewer";
 import type { DownloadMode } from "@/hooks/useAlbumViewer";
+import { useReactions } from "@/hooks/useReactions";
 import ThumbnailGrid from "./ThumbnailGrid";
 import Lightbox from "./Lightbox";
 import DownloadProgress from "./DownloadProgress";
+import { LoginDialog } from "@/components/auth/LoginDialog";
 
 interface Props {
   hash: string;
@@ -12,8 +14,10 @@ interface Props {
 
 export default function ViewerPanel({ hash }: Props) {
   const viewer = useAlbumViewer({ hash });
+  const { reactionsByPhoto, react, comment } = useReactions(viewer.manifest, viewer.nsecBytes);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
   const downloadMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -188,6 +192,7 @@ export default function ViewerPanel({ hash }: Props) {
         objectUrls={viewer.thumbUrls}
         loadThumbnail={viewer.loadThumbnail}
         onPhotoClick={handleOpenLightbox}
+        reactionsByPhoto={viewer.nsecBytes ? reactionsByPhoto : undefined}
       />
 
       {/* Lightbox */}
@@ -216,8 +221,14 @@ export default function ViewerPanel({ hash }: Props) {
           onImageLoaded={() => preloadAdjacent(lightboxIndex!)}
           onClose={() => setLightboxIndex(null)}
           onDownload={handleDownloadSingle}
+          reactionsByPhoto={viewer.nsecBytes ? reactionsByPhoto : undefined}
+          onReact={react}
+          onComment={comment}
+          onLoginRequest={() => setLoginOpen(true)}
         />
       )}
+
+      <LoginDialog isOpen={loginOpen} onClose={() => setLoginOpen(false)} />
     </main>
   );
 }

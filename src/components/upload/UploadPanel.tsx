@@ -146,6 +146,9 @@ export default function UploadPanel() {
       blossomServers: settings.blossomServers,
       title: albumTitle || undefined,
       expirationSeconds: settings.expiration,
+      reactions: settings.reactionsEnabled
+        ? { relays: settings.reactionRelays }
+        : undefined,
     });
   };
 
@@ -207,6 +210,8 @@ export default function UploadPanel() {
           onKeepOriginalsChange={settings.setKeepOriginals}
           expiration={settings.expiration}
           onExpirationChange={settings.setExpiration}
+          reactionsEnabled={settings.reactionsEnabled}
+          onReactionsEnabledChange={settings.setReactionsEnabled}
         />}
 
         {/* Progress list — appears after first photo is added */}

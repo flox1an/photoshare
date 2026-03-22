@@ -256,11 +256,9 @@ Reaction relays
 [+ Add relay]
 ```
 
-Default reaction relays (pre-filled):
+Default reaction relay (pre-filled):
 ```
-wss://relay.damus.io
 wss://nos.lol
-wss://relay.nostr.band
 ```
 
 ### Changes to `startUpload`

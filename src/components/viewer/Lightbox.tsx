@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useGesture } from "@use-gesture/react";
 import type { PhotoEntry } from "@/types/album";
+import type { PhotoReactions } from "@/hooks/useReactions";
+import ReactionsPanel from "./ReactionsPanel";
 
 interface LightboxProps {
   photos: PhotoEntry[];
@@ -15,6 +17,11 @@ interface LightboxProps {
   onClose: () => void;
   onDownload: (index: number) => void;
   onImageLoaded?: () => void;
+  /** Reactions data for the current photo — undefined when reactions not enabled */
+  reactionsByPhoto?: Map<string, PhotoReactions>;
+  onReact?: (photoHash: string, content?: string) => Promise<void>;
+  onComment?: (photoHash: string, text: string) => Promise<void>;
+  onLoginRequest?: () => void;
 }
 
 export default function Lightbox({
@@ -27,8 +34,13 @@ export default function Lightbox({
   onClose,
   onDownload,
   onImageLoaded,
+  reactionsByPhoto,
+  onReact,
+  onComment,
+  onLoginRequest,
 }: LightboxProps) {
   const photo = photos[currentIndex];
+  const [reactionsPanelOpen, setReactionsPanelOpen] = useState(false);
   const [scale, setScale] = useState(1);
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -136,6 +148,25 @@ export default function Lightbox({
     >
       {/* Top-right controls */}
       <div className={`absolute top-4 right-4 z-10 flex items-center gap-2 transition-opacity duration-500 ${controlsVisible ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+        {reactionsByPhoto && photo && (
+          <button
+            className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+            onClick={() => setReactionsPanelOpen((o) => !o)}
+            aria-label="Reactions and comments"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+            </svg>
+            {/* Dot indicator when there are reactions/comments */}
+            {(() => {
+              const rd = reactionsByPhoto.get(photo.hash);
+              const total = (rd?.reactions.length ?? 0) + (rd?.comments.length ?? 0);
+              return total > 0 ? (
+                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-zinc-300" />
+              ) : null;
+            })()}
+          </button>
+        )}
         <button
           className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
           onClick={() => onDownload(currentIndex)}
@@ -155,6 +186,34 @@ export default function Lightbox({
           </svg>
         </button>
       </div>
+
+      {/* Reactions panel — desktop: right side panel; mobile: bottom sheet */}
+      {reactionsPanelOpen && photo && onReact && onComment && (
+        <>
+          {/* Desktop side panel */}
+          <div className="absolute inset-y-0 right-0 z-20 hidden md:flex w-80 flex-col bg-zinc-950/95 border-l border-zinc-800 backdrop-blur-sm">
+            <ReactionsPanel
+              photoHash={photo.hash}
+              reactions={reactionsByPhoto?.get(photo.hash)}
+              onReact={onReact}
+              onComment={onComment}
+              onLoginRequest={onLoginRequest ?? (() => {})}
+              onClose={() => setReactionsPanelOpen(false)}
+            />
+          </div>
+          {/* Mobile bottom sheet */}
+          <div className="absolute inset-x-0 bottom-0 z-20 flex md:hidden h-2/3 flex-col bg-zinc-950/98 border-t border-zinc-800 rounded-t-xl">
+            <ReactionsPanel
+              photoHash={photo.hash}
+              reactions={reactionsByPhoto?.get(photo.hash)}
+              onReact={onReact}
+              onComment={onComment}
+              onLoginRequest={onLoginRequest ?? (() => {})}
+              onClose={() => setReactionsPanelOpen(false)}
+            />
+          </div>
+        </>
+      )}
 
       {/* Photo counter */}
       {photos.length > 1 && (

@@ -8,9 +8,57 @@
  * All functions are async; callers must use them inside useEffect or event handlers.
  */
 
+import { generateSecretKey, getPublicKey } from 'nostr-tools';
+
+/**
+ * Generate a fresh album nsec (random valid secp256k1 private key, 32 bytes).
+ * This replaces the old generateAlbumKey() — the AES key is now derived from the nsec
+ * via HKDF so a single value in the URL serves as both decryption credential and
+ * Nostr reaction inbox key.
+ */
+export function generateAlbumNsec(): Uint8Array {
+  return generateSecretKey();
+}
+
+/**
+ * Derive the AES-256-GCM album key from the nsec bytes using HKDF-SHA-256.
+ * info = "photoshare-aes-v2" distinguishes this derivation from other uses of the nsec.
+ * extractable: false — viewer only needs to decrypt, never re-exports.
+ */
+export async function deriveAlbumAESKey(nsecBytes: Uint8Array): Promise<CryptoKey> {
+  const ikm = await crypto.subtle.importKey(
+    'raw',
+    nsecBytes,
+    { name: 'HKDF' },
+    false,
+    ['deriveKey'],
+  );
+  return crypto.subtle.deriveKey(
+    {
+      name: 'HKDF',
+      hash: 'SHA-256',
+      salt: new Uint8Array(0),
+      info: new TextEncoder().encode('photoshare-aes-v2'),
+    },
+    ikm,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt'],
+  );
+}
+
+/**
+ * Derive the Nostr public key (hex) from nsec bytes.
+ * This pubkey is the gift-wrap recipient for reactions and comments.
+ */
+export function nsecToPubkey(nsecBytes: Uint8Array): string {
+  return getPublicKey(nsecBytes);
+}
+
 /**
  * Generate a new random 256-bit AES-GCM CryptoKey for an album.
- * extractable: true so we can exportKey() → base64url for the share URL.
+ * @deprecated Use generateAlbumNsec() + deriveAlbumAESKey() for new albums (v2 URL scheme).
+ * This function is kept for generating a standalone key when importing a v1 share URL.
  */
 export async function generateAlbumKey(): Promise<CryptoKey> {
   return crypto.subtle.generateKey(
