@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import JSZip from 'jszip';
-import { decryptBlob, importKeyFromBase64url } from '@/lib/crypto';
+import { decryptBlob, importKeyFromBase64url, deriveAlbumAESKey, base64urlToUint8Array } from '@/lib/crypto';
 import { resolveAndFetch } from '@/lib/blossom/resolve';
 import { isLegacyToken, decodePathToken, hashBytesToHex } from '@/lib/shareToken';
 import { decryptAndValidateManifest } from '@/lib/blossom/manifest';
@@ -22,6 +22,8 @@ export interface AlbumViewerState {
   thumbUrls: Record<string, string>;
   fullUrls: Record<string, string>;
   albumKey: CryptoKey | null;
+  /** Raw nsec bytes from the URL fragment — present for v2 albums, null for v1 */
+  nsecBytes: Uint8Array | null;
   resolvedServer: string | null;
   downloadProgress: DownloadProgress | null;
   isIOS: boolean;
@@ -48,6 +50,7 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
   const [thumbUrls, setThumbUrls] = useState<Record<string, string>>({});
   const [fullUrls, setFullUrls] = useState<Record<string, string>>({});
   const [albumKey, setAlbumKey] = useState<CryptoKey | null>(null);
+  const [nsecBytes, setNsecBytes] = useState<Uint8Array | null>(null);
   const [resolvedServer, setResolvedServer] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
 
@@ -83,23 +86,46 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
           serverHints = servers;
         }
 
-        // 3. Import AES key
-        const key = await importKeyFromBase64url(keyB64url);
+        // 3. Decode fragment bytes (either nsec for v2 or raw AES key for v1)
+        const fragmentBytes = base64urlToUint8Array(keyB64url);
 
         // 4. Fetch manifest from Blossom
         const { data, server } = await resolveAndFetch(manifestHash, serverHints);
 
         if (cancelled) return;
 
-        // 5. Decrypt and validate manifest
-        const albumManifest = await decryptAndValidateManifest(
-          new Uint8Array(data),
-          key,
-        );
+        // 5. Try v2 first (fragment = nsec → derive AES key via HKDF), then fall back to v1
+        let key: CryptoKey;
+        let resolvedNsecBytes: Uint8Array | null = null;
+
+        try {
+          const derivedKey = await deriveAlbumAESKey(fragmentBytes);
+          const albumManifest = await decryptAndValidateManifest(new Uint8Array(data), derivedKey);
+          if (albumManifest.v === 2) {
+            key = derivedKey;
+            resolvedNsecBytes = fragmentBytes;
+            if (cancelled) return;
+            setAlbumKey(key);
+            setNsecBytes(resolvedNsecBytes);
+            setManifest(albumManifest);
+            setResolvedServer(server);
+            setStatus('ready');
+            return;
+          }
+          // v:1 manifest decrypted with derived key — this would be an unusual state,
+          // treat it as a legacy URL and proceed with the v1 path below.
+        } catch {
+          // Derived-key decryption failed — this is a v1 URL with a raw AES key in the fragment.
+        }
+
+        // v1 fallback: fragment is the raw AES key
+        key = await importKeyFromBase64url(keyB64url);
+        const albumManifest = await decryptAndValidateManifest(new Uint8Array(data), key);
 
         if (cancelled) return;
 
         setAlbumKey(key);
+        setNsecBytes(null);
         setManifest(albumManifest);
         setResolvedServer(server);
         setStatus('ready');
@@ -253,6 +279,7 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
     thumbUrls,
     fullUrls,
     albumKey,
+    nsecBytes,
     resolvedServer,
     downloadProgress,
     isIOS,

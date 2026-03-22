@@ -1,10 +1,14 @@
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useAlbumViewer } from "@/hooks/useAlbumViewer";
 import type { DownloadMode } from "@/hooks/useAlbumViewer";
+import { useReactions } from "@/hooks/useReactions";
+import { useNostrAccountStore } from "@/store/nostrAccountStore";
+import { getAnonKeypair } from "@/lib/nostr/anonIdentity";
 import ThumbnailGrid from "./ThumbnailGrid";
 import Lightbox from "./Lightbox";
 import DownloadProgress from "./DownloadProgress";
+import { LoginDialog } from "@/components/auth/LoginDialog";
 
 interface Props {
   hash: string;
@@ -12,9 +16,63 @@ interface Props {
 
 export default function ViewerPanel({ hash }: Props) {
   const viewer = useAlbumViewer({ hash });
+  const { reactionsByPhoto, react, comment, loading: reactionsLoading } = useReactions(viewer.manifest, viewer.nsecBytes);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  // The pubkey that represents the current viewer (logged-in or persistent anon)
+  const accountPubkey = useNostrAccountStore((s) => s.pubkey);
+  const viewerPubkey = useMemo(
+    () => accountPubkey ?? getAnonKeypair().pubkey,
+    [accountPubkey],
+  );
+
+  // Build the set of photo hashes this viewer has already reacted to from relay data.
+  // Falls back to an optimistic local-only set for reactions sent this session.
+  const [localReactedHashes, setLocalReactedHashes] = useState<Set<string>>(new Set());
+
+  const reactedHashes = useMemo(() => {
+    const set = new Set(localReactedHashes);
+    reactionsByPhoto.forEach((data, photoHash) => {
+      if (data.reactions.some((r) => r.pubkey === viewerPubkey)) {
+        set.add(photoHash);
+      }
+    });
+    return set;
+  }, [reactionsByPhoto, viewerPubkey, localReactedHashes]);
+
+  const handleReact = useCallback(
+    async (photoHash: string) => {
+      await react(photoHash);
+      setLocalReactedHashes((prev) => new Set(prev).add(photoHash));
+    },
+    [react],
+  );
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [gridFullscreen, setGridFullscreen] = useState(false);
   const downloadMenuRef = useRef<HTMLDivElement>(null);
+
+  // Sync gridFullscreen with the browser's actual fullscreen state so Escape works
+  useEffect(() => {
+    const handler = () => setGridFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
+  const toggleGridFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) void document.documentElement.requestFullscreen();
+    else void document.exitFullscreen();
+  }, []);
+
+  // F key toggles grid fullscreen when the lightbox is not open
+  useEffect(() => {
+    if (lightboxIndex !== null) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "f") toggleGridFullscreen();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [lightboxIndex, toggleGridFullscreen]);
 
   useEffect(() => {
     if (!downloadMenuOpen) return;
@@ -106,11 +164,12 @@ export default function ViewerPanel({ hash }: Props) {
   // status === "ready" and manifest is not null
   const manifest = viewer.manifest!;
   const photoCount = manifest.photos.length;
+  const reactionsEnabled = manifest.v === 2 && !!manifest.reactions;
 
   return (
     <main className="min-h-screen">
-      {/* Gallery header */}
-      <header className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+      {/* Gallery header — hidden in fullscreen */}
+      <header className={`flex items-center justify-between px-5 py-4 border-b border-zinc-800${gridFullscreen ? " hidden" : ""}`}>
         <div>
           <h1 className="text-lg font-semibold tracking-tight text-zinc-100">
             {manifest.title ?? "Photo Album"}
@@ -119,32 +178,30 @@ export default function ViewerPanel({ hash }: Props) {
             {photoCount} {photoCount === 1 ? "photo" : "photos"}
           </p>
         </div>
-        {/* Download button with format picker */}
+        <div className="flex items-center gap-2">
+        {/* Fullscreen toggle button */}
+        <button
+          onClick={toggleGridFullscreen}
+          aria-label="Toggle fullscreen"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+          </svg>
+        </button>
+        {/* Download icon button */}
         <div ref={downloadMenuRef} className="relative">
-          <div className="flex items-stretch">
-            <button
-              onClick={() => handleDownloadAll(viewer.isIOS ? 'zip' : 'files')}
-              disabled={viewer.downloadProgress !== null}
-              className="flex items-center gap-1.5 rounded-l-lg border border-r-0 border-zinc-700 bg-zinc-800 px-4 py-2 text-xs font-medium text-zinc-300
-                hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-              </svg>
-              Download all
-            </button>
-            <button
-              onClick={() => setDownloadMenuOpen(o => !o)}
-              disabled={viewer.downloadProgress !== null}
-              aria-label="Choose download format"
-              className="flex items-center justify-center rounded-r-lg border border-zinc-700 bg-zinc-800 px-2 py-2 text-zinc-300
-                hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-              </svg>
-            </button>
-          </div>
+          <button
+            onClick={() => setDownloadMenuOpen(o => !o)}
+            disabled={viewer.downloadProgress !== null}
+            aria-label="Download"
+            className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+              ${downloadMenuOpen ? 'bg-zinc-700 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white'}`}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+          </button>
 
           {downloadMenuOpen && (
             <div className="absolute right-0 top-full mt-1 z-20 w-44 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl py-1">
@@ -172,10 +229,11 @@ export default function ViewerPanel({ hash }: Props) {
             </div>
           )}
         </div>
+        </div>
       </header>
 
-      {/* Download progress bar */}
-      {viewer.downloadProgress !== null && (
+      {/* Download progress bar — hidden in fullscreen */}
+      {!gridFullscreen && viewer.downloadProgress !== null && (
         <DownloadProgress
           current={viewer.downloadProgress.current}
           total={viewer.downloadProgress.total}
@@ -188,6 +246,7 @@ export default function ViewerPanel({ hash }: Props) {
         objectUrls={viewer.thumbUrls}
         loadThumbnail={viewer.loadThumbnail}
         onPhotoClick={handleOpenLightbox}
+        reactionsByPhoto={reactionsEnabled && viewer.nsecBytes ? reactionsByPhoto : undefined}
       />
 
       {/* Lightbox */}
@@ -216,8 +275,16 @@ export default function ViewerPanel({ hash }: Props) {
           onImageLoaded={() => preloadAdjacent(lightboxIndex!)}
           onClose={() => setLightboxIndex(null)}
           onDownload={handleDownloadSingle}
+          reactionsByPhoto={reactionsEnabled && viewer.nsecBytes ? reactionsByPhoto : undefined}
+          reactionsLoading={reactionsEnabled ? reactionsLoading : false}
+          onReact={reactionsEnabled ? handleReact : undefined}
+          onComment={reactionsEnabled ? comment : undefined}
+          onLoginRequest={() => setLoginOpen(true)}
+          hasReacted={lightboxIndex !== null ? reactedHashes.has(manifest.photos[lightboxIndex]?.hash ?? '') : false}
         />
       )}
+
+      <LoginDialog isOpen={loginOpen} onClose={() => setLoginOpen(false)} />
     </main>
   );
 }

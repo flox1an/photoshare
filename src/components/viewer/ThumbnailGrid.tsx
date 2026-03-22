@@ -1,8 +1,10 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import type { PhotoEntry } from "@/types/album";
+import type { PhotoReactions } from "@/hooks/useReactions";
 import SkeletonCard from "./SkeletonCard";
 import ThumbhashCanvas from "./ThumbhashCanvas";
+import ReactionsBadge from "./ReactionsBadge";
 
 function useColumnCount() {
   // Match the breakpoints: default 2, sm(640) 3, lg(1024) 4
@@ -41,6 +43,8 @@ interface ThumbnailGridProps {
   objectUrls: Record<string, string>;
   loadThumbnail: (index: number) => void;
   onPhotoClick: (index: number) => void;
+  /** Reactions/comments data keyed by photo.hash — only present when reactions enabled */
+  reactionsByPhoto?: Map<string, PhotoReactions>;
 }
 
 export default function ThumbnailGrid({
@@ -48,6 +52,7 @@ export default function ThumbnailGrid({
   objectUrls,
   loadThumbnail,
   onPhotoClick,
+  reactionsByPhoto,
 }: ThumbnailGridProps) {
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -126,6 +131,12 @@ export default function ThumbnailGrid({
                         {photo.filename}
                       </span>
                     </div>
+                    {reactionsByPhoto && (
+                      <ReactionsBadge
+                        hearts={reactionsByPhoto.get(photo.hash)?.reactions.length ?? 0}
+                        comments={reactionsByPhoto.get(photo.hash)?.comments.length ?? 0}
+                      />
+                    )}
                   </div>
                 ) : photo.thumbhash ? (
                   <ThumbhashCanvas

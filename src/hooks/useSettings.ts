@@ -14,6 +14,10 @@ export const EXPIRATION_OPTIONS = [
 
 export type ExpirationSeconds = typeof EXPIRATION_OPTIONS[number]['value'];
 
+export const DEFAULT_REACTION_RELAYS = [
+  'wss://nos.lol',
+];
+
 export interface UseSettingsReturn {
   blossomServers: string[];
   addBlossomServer: (url: string) => Promise<{ error: string | null }>;
@@ -26,6 +30,13 @@ export interface UseSettingsReturn {
   /** Blob expiration offset in seconds (sent via X-Expiration when server supports it) */
   expiration: ExpirationSeconds;
   setExpiration: (value: ExpirationSeconds) => void;
+  /** Whether reactions and comments are enabled for new albums */
+  reactionsEnabled: boolean;
+  setReactionsEnabled: (value: boolean) => void;
+  /** Nostr relay URLs for publishing and querying gift-wrapped reactions */
+  reactionRelays: string[];
+  addReactionRelay: (url: string) => void;
+  removeReactionRelay: (index: number) => void;
 }
 
 function loadExpiration(): ExpirationSeconds {
@@ -49,6 +60,27 @@ function loadKeepOriginals(): boolean {
   }
 }
 
+function loadReactionsEnabled(): boolean {
+  try {
+    return localStorage.getItem('reactions-enabled') === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function loadReactionRelays(): string[] {
+  try {
+    const stored = localStorage.getItem('reaction-relays');
+    if (stored) {
+      const parsed = JSON.parse(stored) as unknown;
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed as string[];
+    }
+  } catch {
+    // localStorage unavailable
+  }
+  return [...DEFAULT_REACTION_RELAYS];
+}
+
 function loadServers(): string[] {
   try {
     const stored = localStorage.getItem('blossom-servers');
@@ -69,6 +101,8 @@ export function useSettings(): UseSettingsReturn {
   const [blossomServers, setBlossomServers] = useState<string[]>(loadServers);
   const [keepOriginals, setKeepOriginalsState] = useState(loadKeepOriginals);
   const [expiration, setExpirationState] = useState<ExpirationSeconds>(loadExpiration);
+  const [reactionsEnabled, setReactionsEnabledState] = useState(loadReactionsEnabled);
+  const [reactionRelays, setReactionRelays] = useState<string[]>(loadReactionRelays);
 
   useEffect(() => {
     try {
@@ -94,6 +128,22 @@ export function useSettings(): UseSettingsReturn {
     }
   }, [expiration]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('reactions-enabled', String(reactionsEnabled));
+    } catch {
+      // localStorage unavailable — ignore
+    }
+  }, [reactionsEnabled]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('reaction-relays', JSON.stringify(reactionRelays));
+    } catch {
+      // localStorage unavailable — ignore
+    }
+  }, [reactionRelays]);
+
   const addBlossomServer = async (url: string): Promise<{ error: string | null }> => {
     const normalized = url.trim().replace(/\/$/, '');
     if (!normalized) return { error: 'URL cannot be empty' };
@@ -113,6 +163,22 @@ export function useSettings(): UseSettingsReturn {
     });
   };
 
+  const addReactionRelay = (url: string) => {
+    const normalized = url.trim().replace(/\/$/, '');
+    if (!normalized) return;
+    setReactionRelays((prev) => {
+      if (prev.includes(normalized)) return prev;
+      return [...prev, normalized];
+    });
+  };
+
+  const removeReactionRelay = (index: number) => {
+    setReactionRelays((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      return next.length > 0 ? next : [...DEFAULT_REACTION_RELAYS];
+    });
+  };
+
   return {
     blossomServers,
     addBlossomServer,
@@ -122,5 +188,10 @@ export function useSettings(): UseSettingsReturn {
     setKeepOriginals: setKeepOriginalsState,
     expiration,
     setExpiration: setExpirationState,
+    reactionsEnabled,
+    setReactionsEnabled: setReactionsEnabledState,
+    reactionRelays,
+    addReactionRelay,
+    removeReactionRelay,
   };
 }

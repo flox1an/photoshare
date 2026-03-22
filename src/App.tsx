@@ -1,6 +1,8 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { EventStoreProvider } from "applesauce-react";
 import { NostrAccountRestorer } from "@/components/auth/NostrAccountRestorer";
+import { eventStore } from "@/lib/nostr/eventStore";
 
 const UploadPanel = lazy(() => import("@/components/upload/UploadPanel"));
 const ViewerPanel = lazy(() => import("@/components/viewer/ViewerPanel"));
@@ -26,6 +28,7 @@ import { useParams } from "react-router-dom";
 export default function App() {
   return (
     <BrowserRouter>
+      <EventStoreProvider eventStore={eventStore}>
       <NostrAccountRestorer />
       <Routes>
         <Route
@@ -45,6 +48,7 @@ export default function App() {
           }
         />
       </Routes>
+      </EventStoreProvider>
     </BrowserRouter>
   );
 }

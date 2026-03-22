@@ -4,15 +4,16 @@
  * useUpload — orchestration hook for encrypt→upload→share pipeline (Blossom-only v2).
  *
  * Pipeline:
- *   1. Generate album key (AES-256-GCM)
- *   2. Create ephemeral signer (BUD-11 auth)
- *   3. For each UploadItem from the async iterable (p-limit(3) concurrency):
+ *   1. Generate album nsec (secp256k1 private key, 32 bytes)
+ *   2. Derive AES-256-GCM key from nsec via HKDF
+ *   3. Create ephemeral signer (BUD-11 auth)
+ *   4. For each UploadItem from the async iterable (p-limit(3) concurrency):
  *      a. encrypt full + thumb (IV-prepend)
  *      b. SHA-256 each blob
  *      c. upload both blobs to ALL configured Blossom servers
  *      d. accumulate PhotoEntry (with thumbhash)
- *   4. Build + encrypt manifest → upload to ALL servers
- *   5. Generate opaque share URL: /{pathToken}#{keyB64url}
+ *   5. Build + encrypt manifest (v:2) → upload to ALL servers
+ *   6. Generate opaque share URL: /{pathToken}#{nsecB64url}
  *      pathToken = base64url(hashBytes[32] + NUL-separated server URLs)
  *
  * Photos are fed via an AsyncIterable so uploads begin as soon as the first
@@ -22,9 +23,10 @@
 import { useCallback, useRef, useState } from 'react';
 import pLimit from 'p-limit';
 import {
-  generateAlbumKey,
+  generateAlbumNsec,
+  deriveAlbumAESKey,
   encryptBlob,
-  exportKeyToBase64url,
+  uint8ArrayToBase64url,
 } from '@/lib/crypto';
 import { createEphemeralSigner } from '@/lib/blossom/signer';
 import { sha256Hex, buildBlossomUploadAuth, uploadBlob } from '@/lib/blossom/upload';
@@ -51,6 +53,8 @@ export interface UploadSettings {
   title?: string;
   /** X-Expiration offset in seconds (only sent when server supports it). Default: 1 year. */
   expirationSeconds?: number;
+  /** When set, reactions and comments are enabled in the manifest with the given relay list */
+  reactions?: { relays: string[] };
 }
 
 /** Return type of the useUpload hook */
@@ -88,7 +92,8 @@ export function useUpload(): UseUploadReturn {
         : [DEFAULT_BLOSSOM_SERVER];
 
       try {
-        const albumKey = await generateAlbumKey();
+        const nsecBytes = generateAlbumNsec();
+        const albumKey = await deriveAlbumAESKey(nsecBytes);
         const accountSigner = useNostrAccountStore.getState().signer;
         const signer = accountSigner ?? createEphemeralSigner();
 
@@ -214,11 +219,14 @@ export function useUpload(): UseUploadReturn {
         }
 
         // Build and encrypt manifest
+        const expiresAt = expSec ? new Date(Date.now() + expSec * 1000).toISOString() : undefined;
         const manifest: AlbumManifest = {
-          v: 1,
+          v: 2,
           ...(settings.title ? { title: settings.title } : {}),
           createdAt: new Date().toISOString(),
+          ...(expiresAt ? { expiresAt } : {}),
           photos: photoEntries.filter(Boolean),
+          ...(settings.reactions ? { reactions: { relays: settings.reactions.relays } } : {}),
         };
 
         const manifestBlob = await encryptManifest(manifest, albumKey);
@@ -243,13 +251,13 @@ export function useUpload(): UseUploadReturn {
           }
         }
 
-        // Build opaque share URL: /{pathToken}#{keyB64url}
-        const keyB64url = await exportKeyToBase64url(albumKey);
+        // Build opaque share URL: /{pathToken}#{nsecB64url}
+        const nsecB64url = uint8ArrayToBase64url(nsecBytes);
         const pathToken = encodePathToken({
           hashBytes: hexToHashBytes(manifestHash),
           servers,
         });
-        const link = `/${pathToken}#${keyB64url}`;
+        const link = `/${pathToken}#${nsecB64url}`;
 
         setShareLink(link);
       } finally {
