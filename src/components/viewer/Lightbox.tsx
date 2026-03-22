@@ -66,23 +66,6 @@ export default function Lightbox({
     setImageLoaded(false);
   }, [currentIndex, resetZoom]);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName;
-      const isTyping = tag === "INPUT" || tag === "TEXTAREA";
-      if (e.key === "ArrowRight") onNext();
-      if (e.key === "ArrowLeft") onPrev();
-      if (e.key === "Escape") onClose();
-      if (e.key === "l" && !isTyping && onReact && !hasReacted) { void onReact(photo.hash); resetHideTimer(); }
-      if (e.key === "c" && !isTyping) setReactionsPanelOpen((prev) => !prev);
-      if (e.key === "f" && !isTyping) {
-        if (!document.fullscreenElement) void document.documentElement.requestFullscreen();
-        else void document.exitFullscreen();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [onNext, onPrev, onClose, onReact, hasReacted, photo, resetHideTimer]);
 
   // Lock body scroll while lightbox is open
   useEffect(() => {
@@ -134,6 +117,24 @@ export default function Lightbox({
     if (hideTimer.current) clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(() => setControlsVisible(false), 2000);
   }, []);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      const isTyping = tag === "INPUT" || tag === "TEXTAREA";
+      if (e.key === "ArrowRight") onNext();
+      if (e.key === "ArrowLeft") onPrev();
+      if (e.key === "Escape") onClose();
+      if (e.key === "l" && !isTyping && onReact && !hasReacted) { void onReact(photo.hash); resetHideTimer(); }
+      if (e.key === "c" && !isTyping) setReactionsPanelOpen((prev) => !prev);
+      if (e.key === "f" && !isTyping) {
+        if (!document.fullscreenElement) void document.documentElement.requestFullscreen();
+        else void document.exitFullscreen();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onNext, onPrev, onClose, onReact, hasReacted, photo, resetHideTimer]);
 
   useEffect(() => {
     resetHideTimer();
