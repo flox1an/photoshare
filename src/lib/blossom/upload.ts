@@ -71,10 +71,50 @@ export async function buildBlossomUploadAuth(
 }
 
 /**
+ * Per-session cache of whether a server's CORS policy allows X-Expiration.
+ * Keyed by server base URL. Populated lazily on first upload to each server.
+ */
+const expirationSupportCache = new Map<string, boolean>();
+
+/**
+ * Check whether a Blossom server allows the X-Expiration request header via CORS.
+ *
+ * Sends an OPTIONS preflight to /upload and inspects Access-Control-Allow-Headers.
+ * Result is cached per server URL for the lifetime of the page.
+ */
+async function serverSupportsExpiration(serverUrl: string): Promise<boolean> {
+  if (expirationSupportCache.has(serverUrl)) {
+    return expirationSupportCache.get(serverUrl)!;
+  }
+
+  let supported = false;
+  try {
+    const res = await fetch(`${serverUrl}/upload`, {
+      method: "OPTIONS",
+      headers: {
+        "Access-Control-Request-Method": "PUT",
+        "Access-Control-Request-Headers": "authorization,content-type,x-expiration",
+        Origin: window.location.origin,
+      },
+    });
+    const allowedHeaders = res.headers.get("access-control-allow-headers") ?? "";
+    supported = allowedHeaders.toLowerCase().includes("x-expiration");
+  } catch {
+    // Network error or server doesn't respond to OPTIONS — assume not supported
+  }
+
+  expirationSupportCache.set(serverUrl, supported);
+  return supported;
+}
+
+/**
  * Upload an encrypted blob to a Blossom server via PUT /upload.
  *
  * Verifies the server-returned SHA-256 matches the locally provided hash.
  * This guards against server-side tampering or corruption.
+ *
+ * X-Expiration is only sent when the server's CORS policy allows it
+ * (checked via OPTIONS preflight, result cached per server).
  *
  * @param serverUrl   Base URL of the Blossom server (e.g., "https://24242.io")
  * @param ciphertext  Encrypted blob bytes (ArrayBuffer)
@@ -90,15 +130,20 @@ export async function uploadBlob(
   authHeader: string,
   localHashHex: string,
   mimeType = "application/octet-stream",
+  expirationSeconds = 365 * 24 * 60 * 60,
 ): Promise<BlobDescriptor> {
-  const oneYearFromNow = Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60;
+  const supportsExpiration = await serverSupportsExpiration(serverUrl);
+  const uploadHeaders: Record<string, string> = {
+    Authorization: authHeader,
+    "Content-Type": mimeType,
+  };
+  if (supportsExpiration) {
+    uploadHeaders["X-Expiration"] = String(Math.floor(Date.now() / 1000) + expirationSeconds);
+  }
+
   const response = await fetch(`${serverUrl}/upload`, {
     method: "PUT",
-    headers: {
-      Authorization: authHeader,
-      "Content-Type": mimeType,
-      "X-Expiration": String(oneYearFromNow),
-    },
+    headers: uploadHeaders,
     body: ciphertext,
   });
 

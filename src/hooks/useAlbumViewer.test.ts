@@ -200,12 +200,12 @@ describe("useAlbumViewer", () => {
       const { mockClick } = setupDownloadMocks();
 
       await act(async () => {
-        await result.current.downloadAll(samplePhotos, fakeKey, "https://blossom.example.com");
+        await result.current.downloadAll(samplePhotos, fakeKey, "https://blossom.example.com", "files");
       });
 
-      // On desktop (no iOS UA), should trigger individual downloads — one click per photo
+      // On desktop with mode="files", should trigger individual downloads — one click per photo
       expect(mockClick).toHaveBeenCalledTimes(2);
-      // JSZip should NOT be used on desktop
+      // JSZip should NOT be used for files mode on desktop
       expect(MockJSZip).not.toHaveBeenCalled();
 
       cleanupDownloadMocks();
@@ -223,7 +223,7 @@ describe("useAlbumViewer", () => {
       setupDownloadMocks();
 
       await act(async () => {
-        await result.current.downloadAll(samplePhotos, fakeKey, "https://blossom.example.com", onProgress);
+        await result.current.downloadAll(samplePhotos, fakeKey, "https://blossom.example.com", "files", onProgress);
       });
 
       expect(onProgress).toHaveBeenCalledTimes(2);

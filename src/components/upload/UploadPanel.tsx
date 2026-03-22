@@ -49,6 +49,7 @@ export default function UploadPanel() {
       title: albumTitle || undefined,
       keepOriginals: settings.keepOriginals,
       originalFiles,
+      expirationSeconds: settings.expiration,
     }, photoIds);
   };
 
@@ -108,6 +109,8 @@ export default function UploadPanel() {
           settings={settings}
           keepOriginals={settings.keepOriginals}
           onKeepOriginalsChange={settings.setKeepOriginals}
+          expiration={settings.expiration}
+          onExpirationChange={settings.setExpiration}
         />}
 
         {/* Progress list — appears after first photo is added */}

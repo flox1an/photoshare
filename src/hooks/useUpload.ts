@@ -42,6 +42,8 @@ export interface UploadSettings {
   keepOriginals?: boolean;
   /** Original File objects parallel to the photos array — used when keepOriginals is true */
   originalFiles?: (File | null | undefined)[];
+  /** X-Expiration offset in seconds (only sent when server supports it). Default: 1 year. */
+  expirationSeconds?: number;
 }
 
 /** Return type of the useUpload hook */
@@ -63,7 +65,7 @@ export function useUpload(): UseUploadReturn {
   const [isUploading, setIsUploading] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
 
-  const { setEncrypting, setUploading, setUploadDone, setUploadError } = useUploadStore();
+  const { addPhoto, setEncrypting, setUploading, setUploadDone, setUploadError } = useUploadStore();
 
   const startUpload = useCallback(
     async (
@@ -90,6 +92,12 @@ export function useUpload(): UseUploadReturn {
         const photoEntries: PhotoEntry[] = [];
         let hasUploadError = false;
 
+        // Pre-populate all photos in the store so total is fixed upfront
+        photos.forEach((photo, index) => {
+          const photoId = photoIds?.[index] ?? `photo-${index}`;
+          addPhoto(photoId, photo.filename);
+        });
+
         await Promise.all(
           photos.map((photo, index) =>
             limitRef.current(async () => {
@@ -113,18 +121,24 @@ export function useUpload(): UseUploadReturn {
                   const fullAuthHeader = await buildBlossomUploadAuth(signer, fullHash);
                   const thumbAuthHeader = await buildBlossomUploadAuth(signer, thumbHash);
 
+                  const expSec = settings.expirationSeconds;
+
                   // Upload to primary server (must succeed)
                   const fullDescriptor = await uploadBlob(
                     servers[0],
                     fullBlob.buffer as ArrayBuffer,
                     fullAuthHeader,
                     fullHash,
+                    undefined,
+                    expSec,
                   );
                   await uploadBlob(
                     servers[0],
                     thumbBlob.buffer as ArrayBuffer,
                     thumbAuthHeader,
                     thumbHash,
+                    undefined,
+                    expSec,
                   );
 
                   // Mirror to additional servers (best-effort)
@@ -132,8 +146,8 @@ export function useUpload(): UseUploadReturn {
                     try {
                       const mFullAuth = await buildBlossomUploadAuth(signer, fullHash);
                       const mThumbAuth = await buildBlossomUploadAuth(signer, thumbHash);
-                      await uploadBlob(mirror, fullBlob.buffer as ArrayBuffer, mFullAuth, fullHash);
-                      await uploadBlob(mirror, thumbBlob.buffer as ArrayBuffer, mThumbAuth, thumbHash);
+                      await uploadBlob(mirror, fullBlob.buffer as ArrayBuffer, mFullAuth, fullHash, undefined, expSec);
+                      await uploadBlob(mirror, thumbBlob.buffer as ArrayBuffer, mThumbAuth, thumbHash, undefined, expSec);
                     } catch {
                       // Mirror failure is non-fatal
                     }
@@ -147,11 +161,11 @@ export function useUpload(): UseUploadReturn {
                     const origBlob = await encryptBlob(origBuffer, albumKey);
                     origHash = await sha256Hex(origBlob.buffer as ArrayBuffer);
                     const origAuthHeader = await buildBlossomUploadAuth(signer, origHash);
-                    await uploadBlob(servers[0], origBlob.buffer as ArrayBuffer, origAuthHeader, origHash);
+                    await uploadBlob(servers[0], origBlob.buffer as ArrayBuffer, origAuthHeader, origHash, undefined, expSec);
                     for (const mirror of servers.slice(1)) {
                       try {
                         const mOrigAuth = await buildBlossomUploadAuth(signer, origHash);
-                        await uploadBlob(mirror, origBlob.buffer as ArrayBuffer, mOrigAuth, origHash);
+                        await uploadBlob(mirror, origBlob.buffer as ArrayBuffer, mOrigAuth, origHash, undefined, expSec);
                       } catch {
                         // Mirror failure is non-fatal
                       }
@@ -203,17 +217,20 @@ export function useUpload(): UseUploadReturn {
         const manifestHash = await sha256Hex(manifestBlob.buffer as ArrayBuffer);
 
         // Upload manifest to all servers (primary must succeed)
+        const expSec = settings.expirationSeconds;
         const manifestAuthHeader = await buildBlossomUploadAuth(signer, manifestHash);
         await uploadBlob(
           servers[0],
           manifestBlob.buffer as ArrayBuffer,
           manifestAuthHeader,
           manifestHash,
+          undefined,
+          expSec,
         );
         for (const mirror of servers.slice(1)) {
           try {
             const mAuth = await buildBlossomUploadAuth(signer, manifestHash);
-            await uploadBlob(mirror, manifestBlob.buffer as ArrayBuffer, mAuth, manifestHash);
+            await uploadBlob(mirror, manifestBlob.buffer as ArrayBuffer, mAuth, manifestHash, undefined, expSec);
           } catch {
             // Mirror failure is non-fatal
           }
@@ -227,23 +244,12 @@ export function useUpload(): UseUploadReturn {
         });
         const link = `/${pathToken}#${keyB64url}`;
 
-        // Auto-copy to clipboard
-        try {
-          if (typeof navigator !== 'undefined' && navigator.clipboard) {
-            await navigator.clipboard.writeText(
-              (typeof window !== 'undefined' ? window.location.origin : '') + link,
-            );
-          }
-        } catch {
-          // Clipboard permission denied — non-fatal
-        }
-
         setShareLink(link);
       } finally {
         setIsUploading(false);
       }
     },
-    [setEncrypting, setUploading, setUploadDone, setUploadError],
+    [addPhoto, setEncrypting, setUploading, setUploadDone, setUploadError],
   );
 
   return { startUpload, shareLink, isUploading, publishError };

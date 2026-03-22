@@ -13,6 +13,8 @@ export interface DownloadProgress {
   total: number;
 }
 
+export type DownloadMode = 'zip' | 'files';
+
 export interface AlbumViewerState {
   status: 'loading' | 'ready' | 'error';
   error: string | null;
@@ -22,10 +24,12 @@ export interface AlbumViewerState {
   albumKey: CryptoKey | null;
   resolvedServer: string | null;
   downloadProgress: DownloadProgress | null;
+  isIOS: boolean;
   downloadAll: (
     photos: PhotoEntry[],
     key: CryptoKey,
     server: string,
+    mode: DownloadMode,
     onProgress?: (current: number, total: number) => void,
   ) => Promise<void>;
   downloadSingle: (
@@ -158,12 +162,13 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
       photos: PhotoEntry[],
       key: CryptoKey,
       _server: string,
+      mode: DownloadMode,
       onProgress?: (current: number, total: number) => void,
     ): Promise<void> => {
       const total = photos.length;
       setDownloadProgress({ current: 0, total });
 
-      if (isIOS) {
+      if (mode === 'zip' || isIOS) {
         const zip = new JSZip();
         for (let i = 0; i < photos.length; i++) {
           const photo = photos[i];
@@ -250,6 +255,7 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
     albumKey,
     resolvedServer,
     downloadProgress,
+    isIOS,
     downloadAll,
     downloadSingle,
     loadThumbnail,

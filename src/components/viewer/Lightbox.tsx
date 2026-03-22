@@ -14,6 +14,7 @@ interface LightboxProps {
   onPrev: () => void;
   onClose: () => void;
   onDownload: (index: number) => void;
+  onImageLoaded?: () => void;
 }
 
 export default function Lightbox({
@@ -25,6 +26,7 @@ export default function Lightbox({
   onPrev,
   onClose,
   onDownload,
+  onImageLoaded,
 }: LightboxProps) {
   const photo = photos[currentIndex];
   const [scale, setScale] = useState(1);
@@ -136,33 +138,39 @@ export default function Lightbox({
       </div>
 
       {/* Photo counter */}
-      <div className="absolute bottom-4 left-0 right-0 z-10 text-center pointer-events-none">
-        <span className="rounded-full bg-black/60 px-3 py-1 text-xs text-zinc-400 font-mono">
-          {currentIndex + 1} / {photos.length}
-        </span>
-      </div>
+      {photos.length > 1 && (
+        <div className="absolute bottom-4 left-0 right-0 z-10 text-center pointer-events-none">
+          <span className="rounded-full bg-black/60 px-3 py-1 text-xs text-zinc-400 font-mono">
+            {currentIndex + 1} / {photos.length}
+          </span>
+        </div>
+      )}
 
       {/* Left arrow */}
-      <button
-        className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
-        onClick={onPrev}
-        aria-label="Previous"
-      >
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-        </svg>
-      </button>
+      {currentIndex > 0 && (
+        <button
+          className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+          onClick={onPrev}
+          aria-label="Previous"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+          </svg>
+        </button>
+      )}
 
       {/* Right arrow */}
-      <button
-        className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
-        onClick={onNext}
-        aria-label="Next"
-      >
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-        </svg>
-      </button>
+      {currentIndex < photos.length - 1 && (
+        <button
+          className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+          onClick={onNext}
+          aria-label="Next"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+          </svg>
+        </button>
+      )}
 
       {/* Image area */}
       <div
@@ -200,7 +208,7 @@ export default function Lightbox({
               src={fullUrls[photo.hash] || undefined}
               className="absolute inset-0 w-full h-full object-contain transition-opacity duration-300"
               style={{ opacity: imageLoaded ? 1 : 0 }}
-              onLoad={() => setImageLoaded(true)}
+              onLoad={() => { setImageLoaded(true); onImageLoaded?.(); }}
               alt={photo.filename}
             />
           )}

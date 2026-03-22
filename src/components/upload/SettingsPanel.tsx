@@ -1,15 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import type { UseSettingsReturn } from '@/hooks/useSettings';
+import type { UseSettingsReturn, ExpirationSeconds } from '@/hooks/useSettings';
+import { EXPIRATION_OPTIONS } from '@/hooks/useSettings';
 
 interface SettingsPanelProps {
   settings: UseSettingsReturn;
   keepOriginals: boolean;
   onKeepOriginalsChange: (value: boolean) => void;
+  expiration: ExpirationSeconds;
+  onExpirationChange: (value: ExpirationSeconds) => void;
 }
 
-export function SettingsPanel({ settings, keepOriginals, onKeepOriginalsChange }: SettingsPanelProps) {
+export function SettingsPanel({ settings, keepOriginals, onKeepOriginalsChange, expiration, onExpirationChange }: SettingsPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [addInput, setAddInput] = useState('');
   const [addError, setAddError] = useState<string | null>(null);
@@ -131,6 +134,26 @@ export function SettingsPanel({ settings, keepOriginals, onKeepOriginalsChange }
                 </p>
               </div>
             </label>
+          </div>
+
+          {/* Expiration */}
+          <div className="mt-4 border-t border-zinc-800 pt-3">
+            <p className="mb-1.5 text-xs font-medium text-zinc-400">Blob expiration</p>
+            <p className="mb-2 text-xs text-zinc-600">
+              Requests the server to delete blobs after the chosen duration.
+              Only works if the server supports the <span className="font-mono">X-Expiration</span> header.
+            </p>
+            <select
+              value={expiration}
+              onChange={(e) => onExpirationChange(Number(e.target.value) as ExpirationSeconds)}
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-2 text-xs text-zinc-200 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 transition-colors"
+            >
+              {EXPIRATION_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       )}
