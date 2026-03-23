@@ -34,13 +34,23 @@ export interface CommentRumor extends Rumor {
   kind: 1;
 }
 
-/** Unwrapped payload returned from unwrapGiftWrap */
-export type UnwrappedRumor = ReactionRumor | CommentRumor;
+/**
+ * Profile rumor — kind 0, signed by the anon key.
+ * Has id + sig unlike regular rumors, so it can be added to the EventStore.
+ */
+export interface ProfileRumor extends Rumor {
+  kind: 0;
+  id: string;
+  sig: string;
+}
 
-/** Jitter timestamp ±2 days per NIP-59 to prevent timing correlation */
+/** Unwrapped payload returned from unwrapGiftWrap */
+export type UnwrappedRumor = ReactionRumor | CommentRumor | ProfileRumor;
+
+/** Jitter timestamp 0–30 minutes into the past per NIP-59 to prevent timing correlation */
 function jitteredTime(): number {
-  const jitter = Math.floor(Math.random() * 172_800) - 86_400; // ±86400 seconds = ±1 day
-  return Math.floor(Date.now() / 1000) + jitter;
+  const jitter = Math.floor(Math.random() * 1_800); // 0–1800 seconds (up to 30 minutes)
+  return Math.floor(Date.now() / 1000) - jitter;
 }
 
 /**
@@ -129,7 +139,7 @@ export function unwrapGiftWrap(
   const rumorJson = nip44.v2.decrypt(seal.content, sealConvKey);
   const rumor = JSON.parse(rumorJson) as Rumor;
 
-  if (rumor.kind !== 7 && rumor.kind !== 1) {
+  if (rumor.kind !== 7 && rumor.kind !== 1 && rumor.kind !== 0) {
     throw new Error(`Unexpected rumor kind ${rumor.kind}`);
   }
 

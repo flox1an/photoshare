@@ -5,10 +5,25 @@ import type { DownloadMode } from "@/hooks/useAlbumViewer";
 import { useReactions } from "@/hooks/useReactions";
 import { useNostrAccountStore } from "@/store/nostrAccountStore";
 import { getAnonKeypair } from "@/lib/nostr/anonIdentity";
+import {
+  getAnonProfileName,
+  setAnonProfileName,
+  hasBeenPrompted,
+  markPrompted,
+  buildSignedProfileEvent,
+} from "@/lib/nostr/anonProfile";
+import { eventStore } from "@/lib/nostr/eventStore";
+import { createGiftWrap } from "@/lib/nostr/nip59";
+import { publishMethod } from "@/lib/nostr/relay";
+import { nsecToPubkey } from "@/lib/crypto";
+import { anonDisplayName } from "@/lib/anonName";
 import ThumbnailGrid from "./ThumbnailGrid";
 import Lightbox from "./Lightbox";
 import DownloadProgress from "./DownloadProgress";
+import AnonNameDialog from "./AnonNameDialog";
+import ReactionToast from "./ReactionToast";
 import { LoginDialog } from "@/components/auth/LoginDialog";
+import type { NostrEvent } from "nostr-tools";
 
 interface Props {
   hash: string;
@@ -16,15 +31,15 @@ interface Props {
 
 export default function ViewerPanel({ hash }: Props) {
   const viewer = useAlbumViewer({ hash });
-  const { reactionsByPhoto, react, comment, loading: reactionsLoading } = useReactions(viewer.manifest, viewer.nsecBytes);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   // The pubkey that represents the current viewer (logged-in or persistent anon)
   const accountPubkey = useNostrAccountStore((s) => s.pubkey);
-  const viewerPubkey = useMemo(
-    () => accountPubkey ?? getAnonKeypair().pubkey,
-    [accountPubkey],
-  );
+  const anonKeypair = useMemo(() => accountPubkey ? null : getAnonKeypair(), [accountPubkey]);
+  const viewerPubkey = anonKeypair?.pubkey ?? accountPubkey ?? '';
+
+  const { reactionsByPhoto, react, comment, loading: reactionsLoading, seenAnonProfileName } =
+    useReactions(viewer.manifest, viewer.nsecBytes, anonKeypair?.pubkey);
 
   // Build the set of photo hashes this viewer has already reacted to from relay data.
   // Falls back to an optimistic local-only set for reactions sent this session.
@@ -40,17 +55,86 @@ export default function ViewerPanel({ hash }: Props) {
     return set;
   }, [reactionsByPhoto, viewerPubkey, localReactedHashes]);
 
+  const handleSaveName = useCallback(
+    async (name: string) => {
+      const anon = getAnonKeypair();
+      const profileEvent = buildSignedProfileEvent(name, anon.privkey);
+
+      // Persist name locally
+      setAnonProfileName(name);
+
+      // Add to local EventStore so useNostrProfile immediately resolves
+      eventStore.add(profileEvent as unknown as NostrEvent);
+
+      // Gift-wrap and publish to the album if reactions are enabled
+      const manifest = viewer.manifest;
+      const nsecBytes = viewer.nsecBytes;
+      if (manifest?.v === 2 && manifest.reactions && nsecBytes) {
+        const albumPubkey = nsecToPubkey(nsecBytes);
+        const expirationTs = manifest.expiresAt
+          ? Math.floor(new Date(manifest.expiresAt).getTime() / 1000)
+          : undefined;
+        const giftWrap = createGiftWrap(profileEvent, null, albumPubkey, expirationTs);
+        await publishMethod(manifest.reactions.relays, giftWrap).catch(() => {});
+      }
+
+      setNameDialogOpen(false);
+    },
+    [viewer.manifest, viewer.nsecBytes],
+  );
+
   const handleReact = useCallback(
     async (photoHash: string) => {
       await react(photoHash);
       setLocalReactedHashes((prev) => new Set(prev).add(photoHash));
+
+      // Show onboarding toast once for anonymous users who haven't been prompted
+      if (!accountPubkey && !hasBeenPrompted()) {
+        markPrompted();
+        setToastVisible(true);
+      }
     },
-    [react],
+    [react, accountPubkey],
   );
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [gridFullscreen, setGridFullscreen] = useState(false);
+  const [nameDialogOpen, setNameDialogOpen] = useState(false);
+  const [toastVisible, setToastVisible] = useState(false);
   const downloadMenuRef = useRef<HTMLDivElement>(null);
+
+  // After EOSE: if the album doesn't have our profile yet, or has a stale name, publish.
+  // Uses the relay data as source of truth — no separate localStorage tracking needed.
+  const profilePublishedRef = useRef(false);
+  useEffect(() => {
+    if (reactionsLoading) return; // wait for EOSE
+    if (accountPubkey || !anonKeypair) return; // logged-in users have real Nostr profiles
+
+    const savedName = getAnonProfileName();
+    if (!savedName) return; // user hasn't set a name yet
+
+    // seenAnonProfileName is null if no kind 0 was found, or the name string if found
+    if (seenAnonProfileName === savedName) return; // relay already has the current name
+
+    if (profilePublishedRef.current) return; // already published this session
+
+    const manifest = viewer.manifest;
+    const nsecBytes = viewer.nsecBytes;
+    if (!manifest || manifest.v !== 2 || !manifest.reactions || !nsecBytes) return;
+
+    profilePublishedRef.current = true; // only lock after we know we can actually publish
+
+    const profileEvent = buildSignedProfileEvent(savedName, anonKeypair.privkey);
+    eventStore.add(profileEvent as unknown as NostrEvent);
+
+    const albumPubkey = nsecToPubkey(nsecBytes);
+    const expirationTs = manifest.expiresAt
+      ? Math.floor(new Date(manifest.expiresAt).getTime() / 1000)
+      : undefined;
+    const giftWrap = createGiftWrap(profileEvent, null, albumPubkey, expirationTs);
+    publishMethod(manifest.reactions.relays, giftWrap).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reactionsLoading, seenAnonProfileName, accountPubkey]);
 
   // Sync gridFullscreen with the browser's actual fullscreen state so Escape works
   useEffect(() => {
@@ -280,11 +364,28 @@ export default function ViewerPanel({ hash }: Props) {
           onReact={reactionsEnabled ? handleReact : undefined}
           onComment={reactionsEnabled ? comment : undefined}
           onLoginRequest={() => setLoginOpen(true)}
+          onEditName={reactionsEnabled ? () => setNameDialogOpen(true) : undefined}
           hasReacted={lightboxIndex !== null ? reactedHashes.has(manifest.photos[lightboxIndex]?.hash ?? '') : false}
         />
       )}
 
       <LoginDialog isOpen={loginOpen} onClose={() => setLoginOpen(false)} />
+
+      <AnonNameDialog
+        isOpen={nameDialogOpen}
+        generatedName={anonDisplayName(getAnonKeypair().pubkey)}
+        savedName={getAnonProfileName()}
+        onSave={(name) => void handleSaveName(name)}
+        onDismiss={() => setNameDialogOpen(false)}
+      />
+
+      {toastVisible && !accountPubkey && (
+        <ReactionToast
+          name={getAnonProfileName() ?? anonDisplayName(getAnonKeypair().pubkey)}
+          onChangeName={() => setNameDialogOpen(true)}
+          onDismiss={() => setToastVisible(false)}
+        />
+      )}
     </main>
   );
 }
