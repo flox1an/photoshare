@@ -55,6 +55,42 @@ export default function Lightbox({
   const scaleRef = useRef(1);
   const translateRef = useRef({ x: 0, y: 0 });
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const naturalSizeRef = useRef<{ w: number; h: number } | null>(null);
+
+  const computeBounds = useCallback((s: number) => {
+    const container = containerRef.current;
+    if (!container) return { maxX: 0, maxY: 0 };
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    let displayedW = cw;
+    let displayedH = ch;
+    const nat = naturalSizeRef.current;
+    if (nat && nat.w > 0 && nat.h > 0) {
+      const containerAspect = cw / ch;
+      const imageAspect = nat.w / nat.h;
+      if (imageAspect > containerAspect) {
+        displayedW = cw;
+        displayedH = cw / imageAspect;
+      } else {
+        displayedH = ch;
+        displayedW = ch * imageAspect;
+      }
+    }
+    return {
+      maxX: Math.max(0, (displayedW * s - cw) / 2),
+      maxY: Math.max(0, (displayedH * s - ch) / 2),
+    };
+  }, []);
+
+  const clampTranslate = useCallback((x: number, y: number, s: number) => {
+    const { maxX, maxY } = computeBounds(s);
+    return {
+      x: Math.max(-maxX, Math.min(maxX, x)),
+      y: Math.max(-maxY, Math.min(maxY, y)),
+    };
+  }, [computeBounds]);
+
   const resetZoom = useCallback(() => {
     setScale(1);
     setTranslate({ x: 0, y: 0 });
@@ -66,6 +102,7 @@ export default function Lightbox({
   useEffect(() => {
     resetZoom();
     setImageLoaded(false);
+    naturalSizeRef.current = null;
   }, [currentIndex, resetZoom]);
 
 
@@ -83,10 +120,9 @@ export default function Lightbox({
         const s = scaleRef.current;
         if (s > 1) {
           const startTranslate = first ? translateRef.current : memo;
-          const nx = startTranslate.x + ox;
-          const ny = startTranslate.y + oy;
-          setTranslate({ x: nx, y: ny });
-          translateRef.current = { x: nx, y: ny };
+          const clamped = clampTranslate(startTranslate.x + ox, startTranslate.y + oy, s);
+          setTranslate(clamped);
+          translateRef.current = clamped;
           return startTranslate;
         }
         if (swipeX === 1) onPrev();
@@ -100,6 +136,10 @@ export default function Lightbox({
         if (newScale === 1) {
           setTranslate({ x: 0, y: 0 });
           translateRef.current = { x: 0, y: 0 };
+        } else {
+          const clamped = clampTranslate(translateRef.current.x, translateRef.current.y, newScale);
+          setTranslate(clamped);
+          translateRef.current = clamped;
         }
         return startScale;
       },
@@ -283,6 +323,7 @@ export default function Lightbox({
 
       {/* Image area */}
       <div
+        ref={containerRef}
         {...bind()}
         className="relative w-full h-full flex items-center justify-center overflow-hidden"
         style={{ touchAction: "none" }}
@@ -318,7 +359,11 @@ export default function Lightbox({
               src={fullUrls[photo.hash] || undefined}
               className="absolute inset-0 w-full h-full object-contain transition-opacity duration-300"
               style={{ opacity: imageLoaded ? 1 : 0 }}
-              onLoad={() => { setImageLoaded(true); onImageLoaded?.(); }}
+              onLoad={(e) => {
+                setImageLoaded(true);
+                onImageLoaded?.();
+                naturalSizeRef.current = { w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight };
+              }}
               alt={photo.filename}
             />
           )}
