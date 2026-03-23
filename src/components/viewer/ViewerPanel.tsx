@@ -85,6 +85,7 @@ export default function ViewerPanel({ hash }: Props) {
 
   const handleReact = useCallback(
     async (photoHash: string) => {
+      if (reactedHashes.has(photoHash)) return;
       await react(photoHash);
       setLocalReactedHashes((prev) => new Set(prev).add(photoHash));
 
@@ -94,7 +95,7 @@ export default function ViewerPanel({ hash }: Props) {
         setToastVisible(true);
       }
     },
-    [react, accountPubkey],
+    [react, accountPubkey, reactedHashes],
   );
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);

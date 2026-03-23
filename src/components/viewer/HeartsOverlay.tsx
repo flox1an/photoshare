@@ -21,10 +21,11 @@ export default function HeartsOverlay({
   return (
     <button
       onClick={() => void onReact(photoHash)}
+      disabled={hasReacted}
       aria-label={hasReacted ? 'Liked' : 'Like'}
       className={`flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors select-none
         ${hasReacted
-          ? 'bg-rose-500/30 text-rose-300 hover:bg-rose-500/40'
+          ? 'bg-rose-500/30 text-rose-300 cursor-default'
           : 'bg-white/10 text-white hover:bg-white/20'
         }`}
     >

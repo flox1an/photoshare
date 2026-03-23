@@ -295,11 +295,12 @@ export default function Lightbox({
             transition: scale === 1 ? "transform 0.2s ease-out" : undefined,
           }}
         >
-          {/* Blurred thumbnail background */}
+          {/* Blurred thumbnail background — visible while full image loads, then fades out */}
           {photo && thumbUrls[photo.thumbHash] && (
             <img
               src={thumbUrls[photo.thumbHash]}
-              className={`absolute inset-0 w-full h-full object-contain blur-sm transition-opacity duration-300 ${imageLoaded ? "opacity-0" : "opacity-100"}`}
+              className="absolute inset-0 w-full h-full object-contain blur-sm transition-opacity duration-300"
+              style={{ opacity: imageLoaded ? 0 : 1 }}
               alt=""
             />
           )}
