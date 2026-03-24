@@ -16,7 +16,7 @@
  *   - Identified: uses the logged-in account's pubkey in the rumor; seal still ephemeral.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { nsecToPubkey } from '@/lib/crypto';
 import { subscribeEvents, publishMethod } from '@/lib/nostr/relay';
 import {
@@ -27,6 +27,8 @@ import {
 } from '@/lib/nostr/nip59';
 import { getAnonKeypair } from '@/lib/nostr/anonIdentity';
 import { eventStore } from '@/lib/nostr/eventStore';
+import { ensureEncryptedContentCachePersistence } from '@/lib/nostr/encryptedContentCache';
+import { getReactionWrapCache } from '@/lib/nostr/reactionWrapCache';
 import { useNostrAccountStore } from '@/store/nostrAccountStore';
 import type { AlbumManifest } from '@/types/album';
 import type { UnwrappedRumor } from '@/lib/nostr/nip59';
@@ -56,6 +58,23 @@ export interface UseReactionsReturn {
   seenAnonProfileName: string | null;
 }
 
+interface ReactionsCacheEntry {
+  reactionsByPhoto: Map<string, PhotoReactions>;
+  seenAnonProfileName: string | null;
+  /**
+   * Highest gift-wrap event.created_at observed for this album subscription.
+   * Used as `since` cursor on subsequent mounts to fetch only new events.
+   */
+  maxWrapCreatedAt: number;
+  idsAtMaxTs: string[];
+}
+
+/**
+ * Session-local cache keyed by album identity.
+ * First visit still does a full backfill; remounts reuse cached state and fetch incrementally.
+ */
+const reactionsCache = new Map<string, ReactionsCacheEntry>();
+
 /** Deduplicate rumors by (kind, pubkey, content, created_at within 1s tolerance) */
 function isDuplicate(existing: UnwrappedRumor[], rumor: UnwrappedRumor): boolean {
   return existing.some(
@@ -84,6 +103,16 @@ export function useReactions(
   const [reactionsByPhoto, setReactionsByPhoto] = useState<Map<string, PhotoReactions>>(new Map());
   const [loading, setLoading] = useState(false);
   const [seenAnonProfileName, setSeenAnonProfileName] = useState<string | null>(null);
+  const reactionsByPhotoRef = useRef(reactionsByPhoto);
+  const seenAnonProfileNameRef = useRef(seenAnonProfileName);
+
+  useEffect(() => {
+    reactionsByPhotoRef.current = reactionsByPhoto;
+  }, [reactionsByPhoto]);
+
+  useEffect(() => {
+    seenAnonProfileNameRef.current = seenAnonProfileName;
+  }, [seenAnonProfileName]);
 
   // Derive album pubkey for relay query (memoised to a string so deps are stable)
   const albumPubkey =
@@ -101,22 +130,76 @@ export function useReactions(
 
   useEffect(() => {
     if (!albumPubkey || !relays || relays.length === 0 || !nsecBytes) return;
+    ensureEncryptedContentCachePersistence();
+    const cacheKey = manifestHash ? `${manifestHash}:${albumPubkey}` : null;
+    const memoryCached = cacheKey ? reactionsCache.get(cacheKey) : undefined;
+    const persistence = getReactionWrapCache();
 
-    setLoading(true);
-    setSeenAnonProfileName(null); // reset for new subscription
+    let mounted = true;
+    let unsubscribe: (() => void) | null = null;
+    let maxWrapCreatedAt = memoryCached?.maxWrapCreatedAt ?? 0;
+    const idsAtMaxTs = new Set<string>(memoryCached?.idsAtMaxTs ?? []);
 
-    const handleEvent = (event: NostrEvent) => {
+    if (memoryCached) {
+      setReactionsByPhoto(new Map(memoryCached.reactionsByPhoto));
+      setSeenAnonProfileName(memoryCached.seenAnonProfileName);
+      setLoading(false);
+    } else {
+      setLoading(true);
+      setSeenAnonProfileName(null);
+      setReactionsByPhoto(new Map());
+    }
+
+    const persistSnapshot = () => {
+      if (!cacheKey) return;
+      const cursor = {
+        maxCreatedAt: maxWrapCreatedAt,
+        idsAtMaxTs: Array.from(idsAtMaxTs),
+      };
+      reactionsCache.set(cacheKey, {
+        reactionsByPhoto: new Map(reactionsByPhotoRef.current),
+        seenAnonProfileName: seenAnonProfileNameRef.current,
+        maxWrapCreatedAt,
+        idsAtMaxTs: cursor.idsAtMaxTs,
+      });
+      if (persistence) void persistence.setCursor(cacheKey, cursor);
+    };
+
+    const processEvent = async (
+      event: NostrEvent,
+      source: 'cache' | 'relay',
+    ): Promise<void> => {
+      if (
+        source === 'relay' &&
+        event.created_at === maxWrapCreatedAt &&
+        idsAtMaxTs.has(event.id)
+      ) {
+        return;
+      }
+
       let rumor: UnwrappedRumor;
       try {
-        rumor = unwrapGiftWrap(event, nsecBytes);
+        const canonical = eventStore.add(event) ?? event;
+        rumor = await unwrapGiftWrap(canonical, nsecBytes);
       } catch {
         return;
+      }
+
+      if (event.created_at > maxWrapCreatedAt) {
+        maxWrapCreatedAt = event.created_at;
+        idsAtMaxTs.clear();
+        idsAtMaxTs.add(event.id);
+      } else if (event.created_at === maxWrapCreatedAt) {
+        idsAtMaxTs.add(event.id);
+      }
+
+      if (source === 'relay' && cacheKey && persistence) {
+        void persistence.putEvent(cacheKey, event);
       }
 
       // Profile events (kind 0) are signed — add to EventStore so useNostrProfile picks them up
       if (rumor.kind === 0) {
         eventStore.add(rumor as unknown as NostrEvent);
-        // Track if this is our own profile so callers can detect stale/missing profiles
         if (viewerAnonPubkey && rumor.pubkey === viewerAnonPubkey) {
           try {
             const meta = JSON.parse(rumor.content) as { name?: string };
@@ -153,18 +236,55 @@ export function useReactions(
       });
     };
 
-    const unsubscribe = subscribeEvents(
-      relays,
-      { kinds: [1059], '#p': [albumPubkey] },
-      handleEvent,
-      () => setLoading(false), // clear loading on EOSE
-    );
+    void (async () => {
+      if (!mounted) return;
+
+      if (cacheKey && !memoryCached && persistence) {
+        const persistedCursor = await persistence.getCursor(cacheKey);
+        if (!mounted) return;
+        if (persistedCursor && persistedCursor.maxCreatedAt >= maxWrapCreatedAt) {
+          maxWrapCreatedAt = persistedCursor.maxCreatedAt;
+          idsAtMaxTs.clear();
+          for (const id of persistedCursor.idsAtMaxTs) idsAtMaxTs.add(id);
+        }
+
+        const cachedEvents = await persistence.getEvents(cacheKey);
+        if (!mounted) return;
+        if (cachedEvents.length > 0) {
+          for (const event of cachedEvents) {
+            await processEvent(event, 'cache');
+          }
+          if (mounted) setLoading(false);
+        }
+      }
+
+      if (!mounted) return;
+
+      const filter = {
+        kinds: [1059],
+        '#p': [albumPubkey],
+        ...(maxWrapCreatedAt > 0 ? { since: maxWrapCreatedAt } : {}),
+      };
+
+      unsubscribe = subscribeEvents(
+        relays,
+        filter,
+        (event) => { void processEvent(event, 'relay'); },
+        () => {
+          if (!mounted) return;
+          setLoading(false); // clear loading on EOSE
+          persistSnapshot();
+        },
+      );
+    })();
 
     return () => {
-      unsubscribe();
+      mounted = false;
+      if (unsubscribe) unsubscribe();
+      persistSnapshot();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [albumPubkey, relays?.join(','), nsecBytes]);
+  }, [albumPubkey, relays?.join(','), nsecBytes, manifestHash]);
 
   const accountPubkey = useNostrAccountStore((s) => s.pubkey);
 
