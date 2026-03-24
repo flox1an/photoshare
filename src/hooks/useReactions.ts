@@ -27,8 +27,6 @@ import {
 } from '@/lib/nostr/nip59';
 import { getAnonKeypair } from '@/lib/nostr/anonIdentity';
 import { eventStore } from '@/lib/nostr/eventStore';
-import { ensureEncryptedContentCachePersistence } from '@/lib/nostr/encryptedContentCache';
-import { getReactionWrapCache } from '@/lib/nostr/reactionWrapCache';
 import { useNostrAccountStore } from '@/store/nostrAccountStore';
 import type { AlbumManifest } from '@/types/album';
 import type { UnwrappedRumor } from '@/lib/nostr/nip59';
@@ -71,7 +69,8 @@ interface ReactionsCacheEntry {
 
 /**
  * Session-local cache keyed by album identity.
- * First visit still does a full backfill; remounts reuse cached state and fetch incrementally.
+ * First visit does a full backfill; remounts reuse cached state and subscribe
+ * with a `since` cursor so only new events are fetched.
  */
 const reactionsCache = new Map<string, ReactionsCacheEntry>();
 
@@ -130,13 +129,10 @@ export function useReactions(
 
   useEffect(() => {
     if (!albumPubkey || !relays || relays.length === 0 || !nsecBytes) return;
-    ensureEncryptedContentCachePersistence();
+
     const cacheKey = manifestHash ? `${manifestHash}:${albumPubkey}` : null;
     const memoryCached = cacheKey ? reactionsCache.get(cacheKey) : undefined;
-    const persistence = getReactionWrapCache();
 
-    let mounted = true;
-    let unsubscribe: (() => void) | null = null;
     let maxWrapCreatedAt = memoryCached?.maxWrapCreatedAt ?? 0;
     const idsAtMaxTs = new Set<string>(memoryCached?.idsAtMaxTs ?? []);
 
@@ -150,41 +146,30 @@ export function useReactions(
       setReactionsByPhoto(new Map());
     }
 
-    const persistSnapshot = () => {
+    /** Save current state into the session cache so remounts can reuse it. */
+    const saveSnapshot = () => {
       if (!cacheKey) return;
-      const cursor = {
-        maxCreatedAt: maxWrapCreatedAt,
-        idsAtMaxTs: Array.from(idsAtMaxTs),
-      };
       reactionsCache.set(cacheKey, {
         reactionsByPhoto: new Map(reactionsByPhotoRef.current),
         seenAnonProfileName: seenAnonProfileNameRef.current,
         maxWrapCreatedAt,
-        idsAtMaxTs: cursor.idsAtMaxTs,
+        idsAtMaxTs: Array.from(idsAtMaxTs),
       });
-      if (persistence) void persistence.setCursor(cacheKey, cursor);
     };
 
-    const processEvent = async (
-      event: NostrEvent,
-      source: 'cache' | 'relay',
-    ): Promise<void> => {
-      if (
-        source === 'relay' &&
-        event.created_at === maxWrapCreatedAt &&
-        idsAtMaxTs.has(event.id)
-      ) {
-        return;
-      }
+    const processEvent = (event: NostrEvent): void => {
+      // Skip events already seen at the cursor boundary
+      if (event.created_at === maxWrapCreatedAt && idsAtMaxTs.has(event.id)) return;
 
       let rumor: UnwrappedRumor;
       try {
         const canonical = eventStore.add(event) ?? event;
-        rumor = await unwrapGiftWrap(canonical, nsecBytes);
+        rumor = unwrapGiftWrap(canonical, nsecBytes);
       } catch {
         return;
       }
 
+      // Advance the since cursor
       if (event.created_at > maxWrapCreatedAt) {
         maxWrapCreatedAt = event.created_at;
         idsAtMaxTs.clear();
@@ -193,11 +178,7 @@ export function useReactions(
         idsAtMaxTs.add(event.id);
       }
 
-      if (source === 'relay' && cacheKey && persistence) {
-        void persistence.putEvent(cacheKey, event);
-      }
-
-      // Profile events (kind 0) are signed — add to EventStore so useNostrProfile picks them up
+      // Profile events (kind 0) — add to EventStore so useNostrProfile picks them up
       if (rumor.kind === 0) {
         eventStore.add(rumor as unknown as NostrEvent);
         if (viewerAnonPubkey && rumor.pubkey === viewerAnonPubkey) {
@@ -236,52 +217,25 @@ export function useReactions(
       });
     };
 
-    void (async () => {
-      if (!mounted) return;
+    const filter = {
+      kinds: [1059],
+      '#p': [albumPubkey],
+      ...(maxWrapCreatedAt > 0 ? { since: maxWrapCreatedAt } : {}),
+    };
 
-      if (cacheKey && !memoryCached && persistence) {
-        const persistedCursor = await persistence.getCursor(cacheKey);
-        if (!mounted) return;
-        if (persistedCursor && persistedCursor.maxCreatedAt >= maxWrapCreatedAt) {
-          maxWrapCreatedAt = persistedCursor.maxCreatedAt;
-          idsAtMaxTs.clear();
-          for (const id of persistedCursor.idsAtMaxTs) idsAtMaxTs.add(id);
-        }
-
-        const cachedEvents = await persistence.getEvents(cacheKey);
-        if (!mounted) return;
-        if (cachedEvents.length > 0) {
-          for (const event of cachedEvents) {
-            await processEvent(event, 'cache');
-          }
-          if (mounted) setLoading(false);
-        }
-      }
-
-      if (!mounted) return;
-
-      const filter = {
-        kinds: [1059],
-        '#p': [albumPubkey],
-        ...(maxWrapCreatedAt > 0 ? { since: maxWrapCreatedAt } : {}),
-      };
-
-      unsubscribe = subscribeEvents(
-        relays,
-        filter,
-        (event) => { void processEvent(event, 'relay'); },
-        () => {
-          if (!mounted) return;
-          setLoading(false); // clear loading on EOSE
-          persistSnapshot();
-        },
-      );
-    })();
+    const unsubscribe = subscribeEvents(
+      relays,
+      filter,
+      processEvent,
+      () => {
+        setLoading(false);
+        saveSnapshot();
+      },
+    );
 
     return () => {
-      mounted = false;
-      if (unsubscribe) unsubscribe();
-      persistSnapshot();
+      unsubscribe();
+      saveSnapshot();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [albumPubkey, relays?.join(','), nsecBytes, manifestHash]);

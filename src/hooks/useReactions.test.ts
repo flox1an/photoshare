@@ -27,31 +27,14 @@ const h = vi.hoisted(() => {
       return unsubscribeMock;
     },
   );
-  const mockEnsureEncryptedContentCachePersistence = vi.fn();
   const mockEventStoreAdd = vi.fn((event: NostrEvent) => event);
-  const mockSetCursor = vi.fn(async (_key: string, _cursor: unknown) => {});
-  const mockGetCursor = vi.fn(async (_key: string): Promise<{ maxCreatedAt: number; idsAtMaxTs: string[] } | null> => null);
-  const mockGetEvents = vi.fn(async (_key: string): Promise<NostrEvent[]> => []);
-  const mockPutEvent = vi.fn(async () => {});
-  const mockGetReactionWrapCache = vi.fn(() => ({
-    getCursor: mockGetCursor,
-    setCursor: mockSetCursor,
-    getEvents: mockGetEvents,
-    putEvent: mockPutEvent,
-  }));
   const mockUnwrapGiftWrap = vi.fn();
 
   return {
     state,
     unsubscribeMock,
     mockSubscribeEvents,
-    mockEnsureEncryptedContentCachePersistence,
     mockEventStoreAdd,
-    mockSetCursor,
-    mockGetCursor,
-    mockGetEvents,
-    mockPutEvent,
-    mockGetReactionWrapCache,
     mockUnwrapGiftWrap,
   };
 });
@@ -63,14 +46,6 @@ vi.mock('@/lib/crypto', () => ({
 vi.mock('@/lib/nostr/relay', () => ({
   subscribeEvents: h.mockSubscribeEvents,
   publishMethod: vi.fn(async () => {}),
-}));
-
-vi.mock('@/lib/nostr/encryptedContentCache', () => ({
-  ensureEncryptedContentCachePersistence: h.mockEnsureEncryptedContentCachePersistence,
-}));
-
-vi.mock('@/lib/nostr/reactionWrapCache', () => ({
-  getReactionWrapCache: h.mockGetReactionWrapCache,
 }));
 
 vi.mock('@/lib/nostr/eventStore', () => ({
@@ -132,95 +107,60 @@ function reactionRumor(createdAt: number) {
   };
 }
 
-describe('useReactions cursor + wrap cache', () => {
+describe('useReactions cursor + session cache', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     h.state.relayOnevent = null;
     h.state.relayOneose = null;
-    h.mockGetReactionWrapCache.mockReturnValue({
-      getCursor: h.mockGetCursor,
-      setCursor: h.mockSetCursor,
-      getEvents: h.mockGetEvents,
-      putEvent: h.mockPutEvent,
-    });
-    h.mockUnwrapGiftWrap.mockImplementation(async (event: NostrEvent) => reactionRumor(event.created_at));
+    h.mockUnwrapGiftWrap.mockImplementation((event: NostrEvent) => reactionRumor(event.created_at));
   });
 
-  it('hydrates cached wraps, subscribes with since cursor, and dedupes same-timestamp boundary ids', async () => {
-    h.mockGetCursor.mockResolvedValueOnce({ maxCreatedAt: 100, idsAtMaxTs: ['e100'] });
-    h.mockGetEvents.mockResolvedValueOnce([wrapEvent('e090', 90)]);
+  it('subscribes without since on first load', () => {
+    renderHook(() => useReactions(manifest, nsecBytes, 'manifest-1'));
 
+    expect(h.mockSubscribeEvents).toHaveBeenCalledTimes(1);
+    const [, filter] = h.mockSubscribeEvents.mock.calls[0];
+    expect(filter).not.toHaveProperty('since');
+    expect(filter).toMatchObject({ kinds: [1059], '#p': ['album-pubkey'] });
+  });
+
+  it('processes relay events and updates reactionsByPhoto', async () => {
     const { result } = renderHook(() =>
       useReactions(manifest, nsecBytes, 'manifest-1'),
     );
 
-    await waitFor(() => {
-      expect(h.mockSubscribeEvents).toHaveBeenCalledTimes(1);
-    });
-
-    const [, filter] = h.mockSubscribeEvents.mock.calls[0];
-    expect(filter).toMatchObject({
-      kinds: [1059],
-      '#p': ['album-pubkey'],
-      since: 100,
+    act(() => {
+      h.state.relayOnevent?.(wrapEvent('e001', 100));
     });
 
     await waitFor(() => {
       const perPhoto = result.current.reactionsByPhoto.get('photo-hash-1');
       expect(perPhoto?.reactions.length).toBe(1);
     });
-
-    expect(h.mockUnwrapGiftWrap).toHaveBeenCalledTimes(1); // cached event only so far
-    expect(h.mockPutEvent).not.toHaveBeenCalled(); // cache hydration must not re-persist
-
-    act(() => {
-      h.state.relayOnevent?.(wrapEvent('e100', 100)); // boundary duplicate from cursor
-    });
-
-    await waitFor(() => {
-      expect(h.mockUnwrapGiftWrap).toHaveBeenCalledTimes(1);
-    });
-
-    act(() => {
-      h.state.relayOnevent?.(wrapEvent('e101', 100)); // new id at boundary ts
-    });
-
-    await waitFor(() => {
-      expect(h.mockUnwrapGiftWrap).toHaveBeenCalledTimes(2);
-      expect(h.mockPutEvent).toHaveBeenCalledTimes(1);
-      expect(h.mockPutEvent).toHaveBeenCalledWith('manifest-1:album-pubkey', expect.objectContaining({ id: 'e101' }));
-    });
-
-    act(() => {
-      h.state.relayOneose?.();
-    });
-
-    await waitFor(() => {
-      expect(h.mockSetCursor).toHaveBeenCalled();
-    });
-
-    const persistedCursor = h.mockSetCursor.mock.calls.at(-1)![1] as { maxCreatedAt: number; idsAtMaxTs: string[] };
-    expect(persistedCursor.maxCreatedAt).toBe(100);
-    expect(new Set(persistedCursor.idsAtMaxTs)).toEqual(new Set(['e100', 'e101']));
   });
 
-  it('omits since on first load when no cursor exists', async () => {
-    h.mockGetCursor.mockResolvedValueOnce(null);
-    h.mockGetEvents.mockResolvedValueOnce([]);
-
-    renderHook(() =>
+  it('deduplicates boundary-timestamp events', async () => {
+    const { result } = renderHook(() =>
       useReactions(manifest, nsecBytes, 'manifest-2'),
     );
 
-    await waitFor(() => {
-      expect(h.mockSubscribeEvents).toHaveBeenCalledTimes(1);
-    });
+    act(() => { h.state.relayOnevent?.(wrapEvent('e100', 100)); });
+    await waitFor(() => expect(result.current.reactionsByPhoto.get('photo-hash-1')?.reactions.length).toBe(1));
 
-    const [, filter] = h.mockSubscribeEvents.mock.calls[0];
-    expect(filter).toMatchObject({
-      kinds: [1059],
-      '#p': ['album-pubkey'],
-    });
-    expect(filter.since).toBeUndefined();
+    // Same id at same timestamp — must be ignored
+    act(() => { h.state.relayOnevent?.(wrapEvent('e100', 100)); });
+    await waitFor(() => expect(h.mockUnwrapGiftWrap).toHaveBeenCalledTimes(1));
+  });
+
+  it('sets loading=false on EOSE', async () => {
+    const { result } = renderHook(() =>
+      useReactions(manifest, nsecBytes, 'manifest-3'),
+    );
+
+    expect(result.current.loading).toBe(true);
+
+    act(() => { h.state.relayOneose?.(); });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
   });
 });
