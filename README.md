@@ -1,36 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PhotoShare
 
-## Getting Started
+Build once. Share instantly. Own your data.
 
-First, run the development server:
+PhotoShare is a fast, decentralized photo drop built on Nostr + Blossom. You can package images into an album, publish it, and share a single link that opens in a clean, swipeable viewer.
+
+This project is intentionally simple at the edges and ambitious at the core: private-by-default sharing, smooth UX, and zero platform lock-in.
+
+## Why This Exists
+
+Most photo-sharing tools optimize for engagement.
+PhotoShare optimizes for *people*.
+
+- You stay in control of your identity and uploads.
+- Sharing is lightweight: upload, get link, done.
+- The architecture is open, composable, and hackable.
+
+## What You Can Do
+
+- Create and share album links from local files
+- View albums via hash-based routes (`/:hash`)
+- Use Nostr-compatible account and event flows
+- Upload encrypted blobs to Blossom servers
+- Run tests quickly with Vitest
+
+## Stack
+
+- Vite + React + TypeScript
+- React Router
+- Tailwind CSS v4
+- Vitest + Testing Library
+- Nostr tooling (`nostr-tools`, `applesauce-*`)
+
+## Quick Start
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open the local URL printed by Vite (typically `http://localhost:5173`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run dev         # Start development server
+npm run build       # Production build
+npm run preview     # Preview production build locally
+npm run lint        # Lint codebase
+npm run test        # Run tests once
+npm run test:watch  # Run tests in watch mode
+```
 
-## Learn More
+## App Flow (High Level)
 
-To learn more about Next.js, take a look at the following resources:
+1. User selects photos in the upload panel (`/`)
+2. Assets are processed and uploaded to Blossom
+3. Metadata/events are published through Nostr-compatible paths
+4. A share hash is generated
+5. Anyone with that hash can open the viewer route (`/:hash`)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Project Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```text
+src/
+  components/    UI surfaces (upload, viewer, auth, theme)
+  hooks/         State + behavioral hooks
+  lib/           Nostr, Blossom, crypto, image utilities
+  store/         Zustand stores
+  workers/       Image processing worker
+```
 
-## Deploy on Vercel
+## Contributing
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+If you want to help, start where your curiosity is strongest:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Improve upload/viewer UX
+- Harden Nostr and relay behavior
+- Expand tests around edge cases
+- Optimize media processing and performance
+
+Open a PR with clear intent and focused diffs.
+
+## Final Note
+
+Great software is momentum plus craftsmanship.
+
+If you’re here building on this project, you’re already doing the hard part.
+Ship something bold.

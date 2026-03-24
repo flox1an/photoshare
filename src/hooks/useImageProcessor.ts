@@ -1,9 +1,10 @@
 /**
  * React hook that owns the Web Worker lifecycle and batch processing logic.
  *
- * Worker is created once in useEffect — never in render body (SSR safety).
- * Worker is terminated on component unmount.
- * p-limit(4) gates concurrent processImage() calls to prevent memory exhaustion.
+ * A worker pool is created in useEffect — never in render body (SSR safety).
+ * All workers are terminated on component unmount.
+ * Pool size is bounded (1..4) based on hardwareConcurrency to avoid memory exhaustion.
+ * Each worker processes one image at a time; files are distributed round-robin.
  *
  * Usage:
  *   const { processBatch, photos, isProcessing } = useImageProcessor();
@@ -16,31 +17,49 @@ import * as Comlink from 'comlink';
 import pLimit from 'p-limit';
 import { useEffect, useRef, useCallback } from 'react';
 import { useProcessingStore } from '@/store/processingStore';
-import type { ProcessorApi } from '@/types/processing';
+import type { ProcessedPhoto, ProcessorApi } from '@/types/processing';
+
+interface WorkerSlot {
+  worker: Worker;
+  proxy: Comlink.Remote<ProcessorApi>;
+  run: (file: File) => Promise<ProcessedPhoto>;
+}
 
 export function useImageProcessor() {
-  const workerRef = useRef<Worker | null>(null);
-  const proxyRef = useRef<Comlink.Remote<ProcessorApi> | null>(null);
-  // Concurrency limit: 4 in-flight worker calls max
-  // 4 × ~36 MB (12 MP bitmap) = ~144 MB peak GPU memory — safe within Chrome tab limits
-  const limitRef = useRef(pLimit(4));
+  const poolRef = useRef<WorkerSlot[]>([]);
+  const nextWorkerIndexRef = useRef(0);
   // Maps photo store ID → original File object (lazy — bytes not loaded until upload)
   const fileMapRef = useRef<Map<string, File>>(new Map());
 
   const { addPhotos, setProcessing, setResult, setError, photos } = useProcessingStore();
 
   useEffect(() => {
-    // Must be inside useEffect — Worker constructor is browser-only (no SSR)
-    workerRef.current = new Worker(
-      new URL('@/workers/image-processor.worker.ts', import.meta.url),
-      { type: 'module' },
-    );
-    proxyRef.current = Comlink.wrap<ProcessorApi>(workerRef.current);
+    const hardware = Number.isFinite(navigator.hardwareConcurrency)
+      ? navigator.hardwareConcurrency
+      : 2;
+    // Keep at least one core for the main thread; clamp to prevent OOM on large batches.
+    const workerCount = Math.max(1, Math.min(4, hardware - 1));
+
+    poolRef.current = Array.from({ length: workerCount }, () => {
+      const worker = new Worker(
+        new URL('@/workers/image-processor.worker.ts', import.meta.url),
+        { type: 'module' },
+      );
+      const proxy = Comlink.wrap<ProcessorApi>(worker);
+      const limiter = pLimit(1);
+      return {
+        worker,
+        proxy,
+        run: (file: File) => limiter(() => proxy.processImage(file)),
+      };
+    });
+    nextWorkerIndexRef.current = 0;
 
     return () => {
-      workerRef.current?.terminate();
-      workerRef.current = null;
-      proxyRef.current = null;
+      for (const slot of poolRef.current) {
+        slot.worker.terminate();
+      }
+      poolRef.current = [];
     };
   }, []);
 
@@ -52,28 +71,27 @@ export function useImageProcessor() {
    */
   const processBatch = useCallback(
     async (files: File[]) => {
-      if (!proxyRef.current) {
+      if (poolRef.current.length === 0) {
         console.error('useImageProcessor: worker not ready');
         return;
       }
       const ids = addPhotos(files);
       // Track original File objects for optional keepOriginals upload
       files.forEach((file, i) => fileMapRef.current.set(ids[i], file));
-      const proxy = proxyRef.current;
-      const limit = limitRef.current;
+      const pool = poolRef.current;
 
       await Promise.all(
         files.map((file, index) => {
           const id = ids[index];
-          return limit(async () => {
-            setProcessing(id);
-            try {
-              const result = await proxy.processImage(file);
-              setResult(id, result);
-            } catch (err) {
-              const message = err instanceof Error ? err.message : String(err);
-              setError(id, message);
-            }
+          const slot = pool[nextWorkerIndexRef.current % pool.length];
+          nextWorkerIndexRef.current += 1;
+
+          setProcessing(id);
+          return slot.run(file).then((result) => {
+            setResult(id, result);
+          }).catch((err: unknown) => {
+            const message = err instanceof Error ? err.message : String(err);
+            setError(id, message);
           });
         }),
       );

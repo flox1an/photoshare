@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { traverseEntry } from '@/lib/image/folder-traverse';
+import { forEachFileEntry } from '@/lib/image/folder-traverse';
 
 interface DropZoneProps {
   onFiles: (files: File[]) => void;
@@ -12,6 +12,9 @@ interface DropZoneProps {
 }
 
 export function DropZone({ onFiles, isProcessing, disabled = false }: DropZoneProps) {
+  const [isScanning, setIsScanning] = useState(false);
+  const [scannedCount, setScannedCount] = useState(0);
+
   // react-dropzone handles file picker (click) and basic drag-drop for individual files
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     noClick: false,
@@ -22,7 +25,10 @@ export function DropZone({ onFiles, isProcessing, disabled = false }: DropZonePr
     },
     onDrop: (acceptedFiles) => {
       // react-dropzone resolves individual files; folders handled by native onDrop below
-      if (acceptedFiles.length > 0) onFiles(acceptedFiles);
+      if (acceptedFiles.length > 0) {
+        setScannedCount(acceptedFiles.length);
+        onFiles(acceptedFiles);
+      }
     },
   });
 
@@ -33,17 +39,24 @@ export function DropZone({ onFiles, isProcessing, disabled = false }: DropZonePr
     async (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
       e.stopPropagation();
+      setIsScanning(true);
+      setScannedCount(0);
+
       const items = Array.from(e.dataTransfer.items);
       const entries = items
         .map((item) => item.webkitGetAsEntry())
         .filter(Boolean) as FileSystemEntry[];
 
-      if (entries.length === 0) return;
+      if (entries.length === 0) {
+        setIsScanning(false);
+        return;
+      }
 
       // Resolve entries and stream files to the UI as they become available
       // This gives instant feedback — files appear in ProgressList immediately
-      const CHUNK_SIZE = 10;
+      const CHUNK_SIZE = 24;
       let buffer: File[] = [];
+      let discovered = 0;
 
       const flush = () => {
         if (buffer.length > 0) {
@@ -52,18 +65,21 @@ export function DropZone({ onFiles, isProcessing, disabled = false }: DropZonePr
         }
       };
 
-      const resolveEntry = async (entry: FileSystemEntry) => {
-        const files = await traverseEntry(entry);
-        for (const file of files) {
-          if (isImageFile(file)) {
+      try {
+        for (const entry of entries) {
+          await forEachFileEntry(entry, (file) => {
+            if (!isImageFile(file)) return;
+            discovered += 1;
             buffer.push(file);
+            if (discovered % CHUNK_SIZE === 0) setScannedCount(discovered);
             if (buffer.length >= CHUNK_SIZE) flush();
-          }
+          });
         }
-      };
-
-      await Promise.all(entries.map(resolveEntry));
-      flush(); // flush remaining files
+        flush(); // flush remaining files
+        setScannedCount(discovered);
+      } finally {
+        setIsScanning(false);
+      }
     },
     [onFiles],
   );
@@ -85,7 +101,7 @@ export function DropZone({ onFiles, isProcessing, disabled = false }: DropZonePr
         isDragActive
           ? 'border-zinc-400 bg-zinc-800/60 text-zinc-300'
           : 'border-zinc-700 bg-zinc-900/50 text-zinc-500 hover:border-zinc-500 hover:bg-zinc-800/40',
-        isProcessing ? 'opacity-75 pointer-events-none' : '',
+        (isProcessing || isScanning) ? 'opacity-75 pointer-events-none' : '',
         disabled ? 'opacity-50 pointer-events-none' : '',
       ]
         .filter(Boolean)
@@ -98,9 +114,15 @@ export function DropZone({ onFiles, isProcessing, disabled = false }: DropZonePr
         </svg>
       </div>
       <p className="text-sm font-medium text-zinc-300">
-        {isDragActive ? 'Drop photos here' : 'Drag photos or a folder here'}
+        {isScanning
+          ? `Scanning dropped files${scannedCount > 0 ? ` (${scannedCount})` : '...'}`
+          : isDragActive
+            ? 'Drop photos here'
+            : 'Drag photos or a folder here'}
       </p>
-      <p className="mt-1 text-xs text-zinc-500">or click to select files</p>
+      <p className="mt-1 text-xs text-zinc-500">
+        {isScanning ? 'Preparing upload queue...' : 'or click to select files'}
+      </p>
       <p className="mt-3 text-xs text-zinc-600">JPEG, PNG, HEIC, WebP — up to 200 photos</p>
     </div>
   );

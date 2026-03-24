@@ -51,7 +51,7 @@ export interface UploadSettings {
   /** Ordered list of Blossom servers — primary first. All receive uploads. */
   blossomServers: string[];
   title?: string;
-  /** X-Expiration offset in seconds (only sent when server supports it). Default: 1 year. */
+  /** X-Expiration offset in seconds (only sent when server supports it). Default: 1 week. */
   expirationSeconds?: number;
   /** When set, reactions and comments are enabled in the manifest with the given relay list */
   reactions?: { relays: string[] };
@@ -68,6 +68,8 @@ export interface UseUploadReturn {
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+const DEFAULT_EXPIRATION_SECONDS = 7 * 24 * 60 * 60;
 
 export function useUpload(): UseUploadReturn {
   const limitRef = useRef(pLimit(3));
@@ -102,7 +104,7 @@ export function useUpload(): UseUploadReturn {
         const photoEntries: PhotoEntry[] = [];
         const pendingTasks: Promise<void>[] = [];
         let hasUploadError = false;
-        const expSec = settings.expirationSeconds;
+        const expSec = settings.expirationSeconds ?? DEFAULT_EXPIRATION_SECONDS;
 
         for await (const { photo, photoId, originalFile } of source) {
           // Register in uploadStore so ProgressList can show upload status

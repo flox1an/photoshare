@@ -89,7 +89,7 @@ const api: ProcessorApi = {
     // Each 12 MP bitmap = ~36 MB GPU memory. Without close(), tab crashes ~photo 50-80.
     bitmap.close();
 
-    return {
+    return Comlink.transfer({
       full: fullBuffer,
       thumb: thumbBuffer,
       width: origW,   // ORIGINAL dimensions — Phase 4 uses for aspect ratio grid layout
@@ -97,7 +97,7 @@ const api: ProcessorApi = {
       filename: file.name.replace(/\.[^.]+$/, '.webp'),
       mimeType,       // 'image/webp' normally, 'image/png' on Safari (accepted for v1)
       thumbhash,
-    };
+    }, [fullBuffer, thumbBuffer]);
   },
 };
 

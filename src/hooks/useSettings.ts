@@ -49,7 +49,7 @@ function loadExpiration(): ExpirationSeconds {
   } catch {
     // localStorage unavailable
   }
-  return 31_536_000;
+  return 604_800;
 }
 
 function loadKeepOriginals(): boolean {

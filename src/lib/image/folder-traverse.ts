@@ -28,16 +28,40 @@ export async function readAllEntries(
   return all;
 }
 
-export async function traverseEntry(entry: FileSystemEntry): Promise<File[]> {
-  if (entry.isFile) {
-    const file = await new Promise<File>((resolve, reject) =>
-      (entry as FileSystemFileEntry).file(resolve, reject),
-    );
-    return [file];
+async function readFileEntry(entry: FileSystemFileEntry): Promise<File> {
+  return new Promise<File>((resolve, reject) => entry.file(resolve, reject));
+}
+
+/**
+ * Stream files from a file/directory entry without building a full in-memory file list.
+ * Uses iterative DFS to avoid deep recursion and allows callers to start processing early.
+ */
+export async function forEachFileEntry(
+  root: FileSystemEntry,
+  onFile: (file: File) => void | Promise<void>,
+): Promise<void> {
+  const stack: FileSystemEntry[] = [root];
+
+  while (stack.length > 0) {
+    const entry = stack.pop()!;
+    if (entry.isFile) {
+      const file = await readFileEntry(entry as FileSystemFileEntry);
+      await onFile(file);
+      continue;
+    }
+
+    const dirEntry = entry as FileSystemDirectoryEntry;
+    const entries = await readAllEntries(dirEntry.createReader());
+    for (let i = entries.length - 1; i >= 0; i--) {
+      stack.push(entries[i]);
+    }
   }
-  // Directory: recurse
-  const dirEntry = entry as FileSystemDirectoryEntry;
-  const entries = await readAllEntries(dirEntry.createReader());
-  const nested = await Promise.all(entries.map(traverseEntry));
-  return nested.flat();
+}
+
+export async function traverseEntry(entry: FileSystemEntry): Promise<File[]> {
+  const files: File[] = [];
+  await forEachFileEntry(entry, (file) => {
+    files.push(file);
+  });
+  return files;
 }
