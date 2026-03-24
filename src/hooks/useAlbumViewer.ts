@@ -63,6 +63,16 @@ export function useAlbumViewer(opts?: { hash?: string; userBlossomServers?: stri
   const createdUrlsRef = useRef<string[]>([]);
   const loadingThumbHashesRef = useRef<Set<string>>(new Set());
   const loadingFullHashesRef = useRef<Set<string>>(new Set());
+  const thumbUrlsRef = useRef<Record<string, string>>({});
+  const fullUrlsRef = useRef<Record<string, string>>({});
+
+  useEffect(() => {
+    thumbUrlsRef.current = thumbUrls;
+  }, [thumbUrls]);
+
+  useEffect(() => {
+    fullUrlsRef.current = fullUrls;
+  }, [fullUrls]);
 
   useEffect(() => {
     if (!opts?.hash) return;
@@ -244,7 +254,7 @@ export function useAlbumViewer(opts?: { hash?: string; userBlossomServers?: stri
       if (!albumKey || !manifest) return;
       const photo = manifest.photos[index];
       if (!photo) return;
-      if (thumbUrls[photo.thumbHash]) return;
+      if (thumbUrlsRef.current[photo.thumbHash]) return;
       if (loadingThumbHashesRef.current.has(photo.thumbHash)) return;
       loadingThumbHashesRef.current.add(photo.thumbHash);
 
@@ -263,7 +273,7 @@ export function useAlbumViewer(opts?: { hash?: string; userBlossomServers?: stri
         }
       })();
     },
-    [albumKey, manifest, thumbUrls, fetchAndDecrypt],
+    [albumKey, manifest, fetchAndDecrypt],
   );
 
   const loadFullImage = useCallback(
@@ -271,7 +281,7 @@ export function useAlbumViewer(opts?: { hash?: string; userBlossomServers?: stri
       if (!albumKey || !manifest) return;
       const photo = manifest.photos[index];
       if (!photo) return;
-      if (fullUrls[photo.hash]) return;
+      if (fullUrlsRef.current[photo.hash]) return;
       if (loadingFullHashesRef.current.has(photo.hash)) return;
       loadingFullHashesRef.current.add(photo.hash);
 
@@ -283,6 +293,12 @@ export function useAlbumViewer(opts?: { hash?: string; userBlossomServers?: stri
           );
           createdUrlsRef.current.push(objectUrl);
           setFullUrls(prev => ({ ...prev, [photo.hash]: objectUrl }));
+          setFailedFullHashes(prev => {
+            if (!prev[photo.hash]) return prev;
+            const next = { ...prev };
+            delete next[photo.hash];
+            return next;
+          });
         } catch {
           setFailedFullHashes(prev => ({ ...prev, [photo.hash]: true }));
         } finally {
@@ -290,7 +306,7 @@ export function useAlbumViewer(opts?: { hash?: string; userBlossomServers?: stri
         }
       })();
     },
-    [albumKey, manifest, fullUrls, fetchAndDecrypt],
+    [albumKey, manifest, fetchAndDecrypt],
   );
 
   return {

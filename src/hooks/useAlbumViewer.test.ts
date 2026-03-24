@@ -291,5 +291,75 @@ describe("useAlbumViewer", () => {
 
       createObjectURLSpy.mockRestore();
     });
+
+    it("does not refetch when called through a stale callback after image is already loaded", async () => {
+      window.location.hash = "#dGVzdGtleQ";
+      window.location.search = "";
+
+      const createObjectURLSpy = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:full-stale");
+      const { result } = renderHook(() => useAlbumViewer({ hash: "f".repeat(64) }));
+
+      await waitFor(() => {
+        expect(result.current.status).toBe("ready");
+      });
+
+      const staleLoad = result.current.loadFullImage;
+
+      mockResolveAndFetch.mockClear();
+      mockResolveAndFetch.mockResolvedValue({ data: new ArrayBuffer(8), server: "https://blossom.example.com" });
+
+      await act(async () => {
+        staleLoad(0);
+      });
+
+      await waitFor(() => {
+        expect(result.current.fullUrls["a".repeat(64)]).toBe("blob:full-stale");
+      });
+
+      mockResolveAndFetch.mockClear();
+
+      await act(async () => {
+        staleLoad(0);
+      });
+
+      expect(mockResolveAndFetch).not.toHaveBeenCalled();
+      createObjectURLSpy.mockRestore();
+    });
+
+    it("clears failed hash after a later successful retry", async () => {
+      window.location.hash = "#dGVzdGtleQ";
+      window.location.search = "";
+
+      const createObjectURLSpy = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:full-retry");
+      const { result } = renderHook(() => useAlbumViewer({ hash: "f".repeat(64) }));
+
+      await waitFor(() => {
+        expect(result.current.status).toBe("ready");
+      });
+
+      mockResolveAndFetch.mockClear();
+      mockResolveAndFetch
+        .mockRejectedValueOnce(new Error("transient"))
+        .mockResolvedValueOnce({ data: new ArrayBuffer(8), server: "https://blossom.example.com" });
+
+      await act(async () => {
+        result.current.loadFullImage(0);
+      });
+
+      await waitFor(() => {
+        expect(result.current.failedFullHashes["a".repeat(64)]).toBe(true);
+      });
+
+      await act(async () => {
+        result.current.loadFullImage(0);
+      });
+
+      await waitFor(() => {
+        expect(result.current.fullUrls["a".repeat(64)]).toBe("blob:full-retry");
+      });
+      expect(result.current.failedFullHashes["a".repeat(64)]).toBeUndefined();
+
+      createObjectURLSpy.mockRestore();
+    });
   });
 });

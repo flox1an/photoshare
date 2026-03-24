@@ -91,6 +91,13 @@ function photoHashFromRumor(rumor: UnwrappedRumor): string | null {
   return imgTag?.[1] ?? null;
 }
 
+function parseExpirationTs(manifest: AlbumManifest | null): number | null {
+  if (!manifest || manifest.v !== 2 || !manifest.expiresAt) return null;
+  const ts = Math.floor(new Date(manifest.expiresAt).getTime() / 1000);
+  if (!Number.isFinite(ts) || ts <= 0) return null;
+  return ts;
+}
+
 export function useReactions(
   manifest: AlbumManifest | null,
   nsecBytes: Uint8Array | null,
@@ -243,10 +250,7 @@ export function useReactions(
   const accountPubkey = useNostrAccountStore((s) => s.pubkey);
 
   // Unix timestamp (seconds) from manifest expiresAt, passed as NIP-40 tag on gift wraps
-  const expirationTs =
-    manifest && manifest.v === 2 && manifest.expiresAt
-      ? Math.floor(new Date(manifest.expiresAt).getTime() / 1000)
-      : undefined;
+  const expirationTs = parseExpirationTs(manifest);
 
   const addOptimistic = useCallback((photoHash: string, rumor: UnwrappedRumor) => {
     setReactionsByPhoto((prev) => {
@@ -273,32 +277,32 @@ export function useReactions(
 
   const react = useCallback(
     async (photoHash: string) => {
-      if (!nsecBytes || !albumPubkey || !relays || !manifest || !manifestHash) return;
+      if (!nsecBytes || !albumPubkey || !relays || !manifest || !manifestHash || !expirationTs) return;
       const anon = accountPubkey ? null : getAnonKeypair();
       const senderPubkey = accountPubkey ?? anon!.pubkey;
       const senderPrivkey = anon?.privkey ?? null;
 
-      const rumor = buildReactionRumor(photoHash, manifestHash, '+', senderPubkey);
+      const rumor = buildReactionRumor(photoHash, manifestHash, '+', senderPubkey, expirationTs);
       const giftWrap = createGiftWrap(rumor, senderPrivkey, albumPubkey, expirationTs);
       await publishMethod(relays, giftWrap);
       addOptimistic(photoHash, rumor);
     },
-    [nsecBytes, albumPubkey, relays, manifest, manifestHash, accountPubkey, addOptimistic],
+    [nsecBytes, albumPubkey, relays, manifest, manifestHash, accountPubkey, addOptimistic, expirationTs],
   );
 
   const comment = useCallback(
     async (photoHash: string, text: string) => {
-      if (!nsecBytes || !albumPubkey || !relays || !manifest || !manifestHash || !text.trim()) return;
+      if (!nsecBytes || !albumPubkey || !relays || !manifest || !manifestHash || !text.trim() || !expirationTs) return;
       const anon = accountPubkey ? null : getAnonKeypair();
       const senderPubkey = accountPubkey ?? anon!.pubkey;
       const senderPrivkey = anon?.privkey ?? null;
 
-      const rumor = buildCommentRumor(photoHash, manifestHash, text.trim(), senderPubkey);
+      const rumor = buildCommentRumor(photoHash, manifestHash, text.trim(), senderPubkey, expirationTs);
       const giftWrap = createGiftWrap(rumor, senderPrivkey, albumPubkey, expirationTs);
       await publishMethod(relays, giftWrap);
       addOptimistic(photoHash, rumor);
     },
-    [nsecBytes, albumPubkey, relays, manifest, manifestHash, accountPubkey, addOptimistic],
+    [nsecBytes, albumPubkey, relays, manifest, manifestHash, accountPubkey, addOptimistic, expirationTs],
   );
 
   // If reactions not enabled, return inert state

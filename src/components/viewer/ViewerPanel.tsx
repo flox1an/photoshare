@@ -30,6 +30,13 @@ interface Props {
   hash: string;
 }
 
+function parseExpirationTs(expiresAt?: string): number | null {
+  if (!expiresAt) return null;
+  const ts = Math.floor(new Date(expiresAt).getTime() / 1000);
+  if (!Number.isFinite(ts) || ts <= 0) return null;
+  return ts;
+}
+
 export default function ViewerPanel({ hash }: Props) {
   // The pubkey that represents the current viewer (logged-in or persistent anon)
   const accountPubkey = useNostrAccountStore((s) => s.pubkey);
@@ -59,23 +66,25 @@ export default function ViewerPanel({ hash }: Props) {
 
   const handleSaveName = useCallback(
     async (name: string) => {
-      const anon = getAnonKeypair();
-      const profileEvent = buildSignedProfileEvent(name, anon.privkey);
-
       // Persist name locally
       setAnonProfileName(name);
-
-      // Add to local EventStore so useNostrProfile immediately resolves
-      eventStore.add(profileEvent as unknown as NostrEvent);
 
       // Gift-wrap and publish to the album if reactions are enabled
       const manifest = viewer.manifest;
       const nsecBytes = viewer.nsecBytes;
       if (manifest?.v === 2 && manifest.reactions && nsecBytes) {
+        const expirationTs = parseExpirationTs(manifest.expiresAt);
+        if (!expirationTs) {
+          setNameDialogOpen(false);
+          return;
+        }
+        const anon = getAnonKeypair();
+        const profileEvent = buildSignedProfileEvent(name, anon.privkey, expirationTs);
+
+        // Add to local EventStore so useNostrProfile immediately resolves
+        eventStore.add(profileEvent as unknown as NostrEvent);
+
         const albumPubkey = nsecToPubkey(nsecBytes);
-        const expirationTs = manifest.expiresAt
-          ? Math.floor(new Date(manifest.expiresAt).getTime() / 1000)
-          : undefined;
         const giftWrap = createGiftWrap(profileEvent, null, albumPubkey, expirationTs);
         await publishMethod(manifest.reactions.relays, giftWrap).catch(() => {});
       }
@@ -126,16 +135,15 @@ export default function ViewerPanel({ hash }: Props) {
     const manifest = viewer.manifest;
     const nsecBytes = viewer.nsecBytes;
     if (!manifest || manifest.v !== 2 || !manifest.reactions || !nsecBytes) return;
+    const expirationTs = parseExpirationTs(manifest.expiresAt);
+    if (!expirationTs) return;
 
     profilePublishedRef.current = true; // only lock after we know we can actually publish
 
-    const profileEvent = buildSignedProfileEvent(savedName, anonKeypair.privkey);
+    const profileEvent = buildSignedProfileEvent(savedName, anonKeypair.privkey, expirationTs);
     eventStore.add(profileEvent as unknown as NostrEvent);
 
     const albumPubkey = nsecToPubkey(nsecBytes);
-    const expirationTs = manifest.expiresAt
-      ? Math.floor(new Date(manifest.expiresAt).getTime() / 1000)
-      : undefined;
     const giftWrap = createGiftWrap(profileEvent, null, albumPubkey, expirationTs);
     publishMethod(manifest.reactions.relays, giftWrap).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps

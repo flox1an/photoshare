@@ -29,6 +29,10 @@ const h = vi.hoisted(() => {
   );
   const mockEventStoreAdd = vi.fn((event: NostrEvent) => event);
   const mockUnwrapGiftWrap = vi.fn();
+  const mockCreateGiftWrap = vi.fn();
+  const mockBuildReactionRumor = vi.fn();
+  const mockBuildCommentRumor = vi.fn();
+  const mockPublishMethod = vi.fn(async () => {});
 
   return {
     state,
@@ -36,6 +40,10 @@ const h = vi.hoisted(() => {
     mockSubscribeEvents,
     mockEventStoreAdd,
     mockUnwrapGiftWrap,
+    mockCreateGiftWrap,
+    mockBuildReactionRumor,
+    mockBuildCommentRumor,
+    mockPublishMethod,
   };
 });
 
@@ -45,7 +53,7 @@ vi.mock('@/lib/crypto', () => ({
 
 vi.mock('@/lib/nostr/relay', () => ({
   subscribeEvents: h.mockSubscribeEvents,
-  publishMethod: vi.fn(async () => {}),
+  publishMethod: h.mockPublishMethod,
 }));
 
 vi.mock('@/lib/nostr/eventStore', () => ({
@@ -62,9 +70,9 @@ vi.mock('@/lib/nostr/anonIdentity', () => ({
 
 vi.mock('@/lib/nostr/nip59', () => ({
   unwrapGiftWrap: h.mockUnwrapGiftWrap,
-  createGiftWrap: vi.fn(),
-  buildReactionRumor: vi.fn(),
-  buildCommentRumor: vi.fn(),
+  createGiftWrap: h.mockCreateGiftWrap,
+  buildReactionRumor: h.mockBuildReactionRumor,
+  buildCommentRumor: h.mockBuildCommentRumor,
 }));
 
 import { useReactions } from '@/hooks/useReactions';
@@ -82,6 +90,10 @@ const manifest: AlbumManifest = {
     },
   ],
   reactions: { relays: ['wss://relay.example.com'] },
+};
+const manifestWithExpiration: AlbumManifest = {
+  ...manifest,
+  expiresAt: '2026-03-25T00:00:00Z',
 };
 const nsecBytes = new Uint8Array([1, 2, 3]);
 
@@ -113,6 +125,8 @@ describe('useReactions cursor + session cache', () => {
     h.state.relayOnevent = null;
     h.state.relayOneose = null;
     h.mockUnwrapGiftWrap.mockImplementation((event: NostrEvent) => reactionRumor(event.created_at));
+    h.mockBuildReactionRumor.mockReturnValue(reactionRumor(123));
+    h.mockCreateGiftWrap.mockReturnValue(wrapEvent('gift-1', 124));
   });
 
   it('subscribes without since on first load', () => {
@@ -162,5 +176,45 @@ describe('useReactions cursor + session cache', () => {
     act(() => { h.state.relayOneose?.(); });
 
     await waitFor(() => expect(result.current.loading).toBe(false));
+  });
+
+  it('does not publish reaction events when manifest expiration is missing', async () => {
+    const { result } = renderHook(() =>
+      useReactions(manifest, nsecBytes, 'manifest-4'),
+    );
+
+    await act(async () => {
+      await result.current.react('photo-hash-1');
+    });
+
+    expect(h.mockBuildReactionRumor).not.toHaveBeenCalled();
+    expect(h.mockCreateGiftWrap).not.toHaveBeenCalled();
+    expect(h.mockPublishMethod).not.toHaveBeenCalled();
+  });
+
+  it('publishes reaction events with expiration when manifest expiration exists', async () => {
+    const { result } = renderHook(() =>
+      useReactions(manifestWithExpiration, nsecBytes, 'manifest-5'),
+    );
+    const expectedExpiration = Math.floor(new Date(manifestWithExpiration.expiresAt!).getTime() / 1000);
+
+    await act(async () => {
+      await result.current.react('photo-hash-1');
+    });
+
+    expect(h.mockBuildReactionRumor).toHaveBeenCalledWith(
+      'photo-hash-1',
+      'manifest-5',
+      '+',
+      'anon-pub',
+      expectedExpiration,
+    );
+    expect(h.mockCreateGiftWrap).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(Uint8Array),
+      'album-pubkey',
+      expectedExpiration,
+    );
+    expect(h.mockPublishMethod).toHaveBeenCalledTimes(1);
   });
 });

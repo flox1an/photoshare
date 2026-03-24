@@ -51,17 +51,24 @@ export function markPrompted(): void {
 
 /**
  * Build and sign a kind 0 (profile metadata) event with the given name,
- * signed by the anon private key.
+ * signed by the anon private key, with a required NIP-40 expiration tag.
  *
  * Returns a fully signed NostrEvent that can be added to the EventStore
  * and/or gift-wrapped for the album.
  */
-export function buildSignedProfileEvent(name: string, privkey: Uint8Array): NostrEvent {
+export function buildSignedProfileEvent(
+  name: string,
+  privkey: Uint8Array,
+  expirationTs: number,
+): NostrEvent {
+  if (!Number.isFinite(expirationTs) || !Number.isInteger(expirationTs) || expirationTs <= 0) {
+    throw new Error('Missing or invalid expiration timestamp');
+  }
   return finalizeEvent(
     {
       kind: 0,
       created_at: Math.floor(Date.now() / 1000),
-      tags: [],
+      tags: [['expiration', String(expirationTs)]],
       content: JSON.stringify({ name }),
     },
     privkey,

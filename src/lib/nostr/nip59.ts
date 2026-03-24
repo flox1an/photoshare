@@ -61,21 +61,30 @@ function conversationKey(senderPrivkey: Uint8Array, recipientPubkey: string): Ui
   return nip44.v2.utils.getConversationKey(senderPrivkey, recipientPubkey);
 }
 
+function assertValidExpirationTs(expirationTs: number): number {
+  if (!Number.isFinite(expirationTs) || !Number.isInteger(expirationTs) || expirationTs <= 0) {
+    throw new Error('Missing or invalid expiration timestamp');
+  }
+  return expirationTs;
+}
+
 /**
  * Create a NIP-59 gift wrap containing a reaction or comment rumor.
  *
  * @param rumor - The unsigned event to wrap (kind 7 reaction or kind 1 comment)
  * @param senderPrivkey - Private key for signing the seal. Pass null for anonymous (generates ephemeral).
  * @param recipientPubkey - Album reaction pubkey (hex). Gift wrap is addressed to this key.
- * @param expirationTs - Optional Unix timestamp (seconds) for NIP-40 expiration tag on the gift wrap.
+ * @param expirationTs - Unix timestamp (seconds) for NIP-40 expiration tag.
  * @returns Signed kind 1059 event ready to publish.
  */
 export function createGiftWrap(
   rumor: Rumor,
   senderPrivkey: Uint8Array | null,
   recipientPubkey: string,
-  expirationTs?: number,
+  expirationTs: number,
 ): NostrEvent {
+  const expiration = assertValidExpirationTs(expirationTs);
+
   // For the seal, use the sender's key if provided, otherwise generate ephemeral
   const sealPrivkey = senderPrivkey ?? generateSecretKey();
 
@@ -87,7 +96,7 @@ export function createGiftWrap(
   const sealTemplate = {
     kind: 13,
     content: encryptedRumor,
-    tags: [] as string[][],
+    tags: [['expiration', String(expiration)]] as string[][],
     created_at: jitteredTime(),
   };
   const seal = finalizeEvent(sealTemplate, sealPrivkey);
@@ -97,8 +106,10 @@ export function createGiftWrap(
   const wrapConvKey = conversationKey(wrapPrivkey, recipientPubkey);
   const encryptedSeal = nip44.v2.encrypt(JSON.stringify(seal), wrapConvKey);
 
-  const wrapTags: string[][] = [['p', recipientPubkey]];
-  if (expirationTs !== undefined) wrapTags.push(['expiration', String(expirationTs)]);
+  const wrapTags: string[][] = [
+    ['p', recipientPubkey],
+    ['expiration', String(expiration)],
+  ];
 
   const wrapTemplate = {
     kind: 1059,
@@ -153,13 +164,16 @@ export function unwrapGiftWrap(
  * @param manifestHash - SHA-256 hash of the album manifest (for album attribution)
  * @param content - Reaction emoji/string, e.g. "+" for like or "🔥"
  * @param senderPubkey - Hex pubkey (real or ephemeral)
+ * @param expirationTs - Unix timestamp (seconds) for NIP-40 expiration.
  */
 export function buildReactionRumor(
   photoHash: string,
   manifestHash: string,
   content: string,
   senderPubkey: string,
+  expirationTs: number,
 ): ReactionRumor {
+  const expiration = assertValidExpirationTs(expirationTs);
   return {
     kind: 7,
     pubkey: senderPubkey,
@@ -167,6 +181,7 @@ export function buildReactionRumor(
     tags: [
       ['img', photoHash],
       ['album', manifestHash],
+      ['expiration', String(expiration)],
     ],
     content,
   };
@@ -179,13 +194,16 @@ export function buildReactionRumor(
  * @param manifestHash - SHA-256 hash of the album manifest
  * @param text - Comment text
  * @param senderPubkey - Hex pubkey (real or ephemeral)
+ * @param expirationTs - Unix timestamp (seconds) for NIP-40 expiration.
  */
 export function buildCommentRumor(
   photoHash: string,
   manifestHash: string,
   text: string,
   senderPubkey: string,
+  expirationTs: number,
 ): CommentRumor {
+  const expiration = assertValidExpirationTs(expirationTs);
   return {
     kind: 1,
     pubkey: senderPubkey,
@@ -193,6 +211,7 @@ export function buildCommentRumor(
     tags: [
       ['img', photoHash],
       ['album', manifestHash],
+      ['expiration', String(expiration)],
     ],
     content: text,
   };
