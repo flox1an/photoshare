@@ -110,4 +110,16 @@ describe("Lightbox", () => {
 
     expect(screen.getByLabelText("Comments")).toBeDefined();
   });
+
+  it("does not show loading spinner when current photo already has a full URL", () => {
+    const { container } = render(
+      <Lightbox
+        {...defaultProps}
+        thumbUrls={{ [samplePhotos[1].thumbHash]: "blob:thumb-2" }}
+        fullUrls={{ [samplePhotos[1].hash]: "blob:full-2" }}
+      />,
+    );
+
+    expect(container.querySelector(".animate-spin")).toBeNull();
+  });
 });

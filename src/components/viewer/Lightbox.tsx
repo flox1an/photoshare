@@ -127,14 +127,15 @@ export default function Lightbox({
   // Reset state when photo changes — strip already positioned adjacent images, just snap to 0
   useEffect(() => {
     resetZoom();
+    const hasFullUrl = !!(photo && fullUrls[photo.hash]);
     // If this photo's full image was already loaded (e.g. preloaded in adjacent slot), skip blur/spinner
-    setImageLoaded(photo ? loadedHashesRef.current.has(photo.hash) : false);
-    setHidePlaceholder(false);
+    setImageLoaded(photo ? (hasFullUrl || loadedHashesRef.current.has(photo.hash)) : false);
+    setHidePlaceholder(hasFullUrl);
     naturalSizeRef.current = null;
     navDirectionRef.current = null;
     setSlideTransition(undefined);
     setSlideX(0);
-  }, [currentIndex, resetZoom]);
+  }, [currentIndex, resetZoom, photo, fullUrls]);
 
   // Let the full image start fading in before hiding the blurred placeholder
   useEffect(() => {

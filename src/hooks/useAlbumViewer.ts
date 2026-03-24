@@ -59,6 +59,7 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
 
   const createdUrlsRef = useRef<string[]>([]);
   const loadingThumbHashesRef = useRef<Set<string>>(new Set());
+  const loadingFullHashesRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!opts?.hash) return;
@@ -265,6 +266,8 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
       const photo = manifest.photos[index];
       if (!photo) return;
       if (fullUrls[photo.hash]) return;
+      if (loadingFullHashesRef.current.has(photo.hash)) return;
+      loadingFullHashesRef.current.add(photo.hash);
 
       void (async () => {
         try {
@@ -276,6 +279,8 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
           setFullUrls(prev => ({ ...prev, [photo.hash]: objectUrl }));
         } catch {
           // Full image load failure is non-fatal
+        } finally {
+          loadingFullHashesRef.current.delete(photo.hash);
         }
       })();
     },

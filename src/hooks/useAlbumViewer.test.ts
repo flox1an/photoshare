@@ -254,4 +254,42 @@ describe("useAlbumViewer", () => {
       cleanupDownloadMocks();
     });
   });
+
+  describe("loadFullImage", () => {
+    it("dedupes in-flight loads for the same photo hash", async () => {
+      window.location.hash = "#dGVzdGtleQ";
+      window.location.search = "";
+
+      const createObjectURLSpy = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:full-1");
+      const { result } = renderHook(() => useAlbumViewer({ hash: "f".repeat(64) }));
+
+      await waitFor(() => {
+        expect(result.current.status).toBe("ready");
+      });
+
+      let resolveFetch: ((value: { data: ArrayBuffer; server: string }) => void) | null = null;
+      const inFlight = new Promise<{ data: ArrayBuffer; server: string }>((resolve) => {
+        resolveFetch = resolve;
+      });
+
+      mockResolveAndFetch.mockClear();
+      mockResolveAndFetch.mockReturnValue(inFlight);
+
+      act(() => {
+        result.current.loadFullImage(0);
+        result.current.loadFullImage(0);
+      });
+
+      expect(mockResolveAndFetch).toHaveBeenCalledTimes(1);
+      expect(mockResolveAndFetch).toHaveBeenCalledWith("a".repeat(64), ["https://blossom.example.com"]);
+
+      resolveFetch!({ data: new ArrayBuffer(8), server: "https://blossom.example.com" });
+
+      await waitFor(() => {
+        expect(result.current.fullUrls["a".repeat(64)]).toBe("blob:full-1");
+      });
+
+      createObjectURLSpy.mockRestore();
+    });
+  });
 });
