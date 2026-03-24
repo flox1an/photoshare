@@ -19,6 +19,8 @@ export interface AlbumViewerState {
   status: 'loading' | 'ready' | 'error';
   error: string | null;
   manifest: AlbumManifest | null;
+  /** SHA-256 hash of the encrypted manifest blob from the route token */
+  manifestHash: string | null;
   thumbUrls: Record<string, string>;
   fullUrls: Record<string, string>;
   albumKey: CryptoKey | null;
@@ -47,6 +49,7 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
   const [manifest, setManifest] = useState<AlbumManifest | null>(null);
+  const [manifestHash, setManifestHash] = useState<string | null>(null);
   const [thumbUrls, setThumbUrls] = useState<Record<string, string>>({});
   const [fullUrls, setFullUrls] = useState<Record<string, string>>({});
   const [albumKey, setAlbumKey] = useState<CryptoKey | null>(null);
@@ -108,6 +111,7 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
             setAlbumKey(key);
             setNsecBytes(resolvedNsecBytes);
             setManifest(albumManifest);
+            setManifestHash(manifestHash);
             setResolvedServer(server);
             setStatus('ready');
             return;
@@ -127,6 +131,7 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
         setAlbumKey(key);
         setNsecBytes(null);
         setManifest(albumManifest);
+        setManifestHash(manifestHash);
         setResolvedServer(server);
         setStatus('ready');
       } catch (err) {
@@ -276,6 +281,7 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
     status,
     error,
     manifest,
+    manifestHash,
     thumbUrls,
     fullUrls,
     albumKey,

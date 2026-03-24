@@ -17,6 +17,8 @@ vi.mock("jszip", () => {
 vi.mock("@/lib/crypto", () => ({
   importKeyFromBase64url: vi.fn().mockResolvedValue({} as CryptoKey),
   decryptBlob: vi.fn().mockImplementation(async (buf: Uint8Array) => buf.buffer),
+  deriveAlbumAESKey: vi.fn().mockRejectedValue(new Error("not v2")),
+  base64urlToUint8Array: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
 }));
 
 // Mock resolveAndFetch
@@ -159,6 +161,7 @@ describe("useAlbumViewer", () => {
       expect(mockImportKeyFromBase64url).toHaveBeenCalledWith("dGVzdGtleQ");
       expect(mockResolveAndFetch).toHaveBeenCalledWith("a".repeat(64), []);
       expect(result.current.manifest).toEqual(sampleManifest);
+      expect(result.current.manifestHash).toBe("a".repeat(64));
       expect(result.current.resolvedServer).toBe("https://blossom.example.com");
       expect(result.current.albumKey).not.toBeNull();
     });

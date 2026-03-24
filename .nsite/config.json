@@ -1,0 +1,20 @@
+{
+  "relays": [
+    "wss://nos.lol",
+    "wss://relay.primal.net",
+    "wss://relay.nostu.be"
+  ],
+  "servers": [
+    "https://nostr.download",
+    "https://almond.slidestr.net",
+    "https://cdn.sovbit.host"
+  ],
+  "profile": {
+    "name": "photoshare",
+    "display_name": "photoshare",
+    "about": "Encrypted photo albums on blossom servers"
+  },
+  "publishProfile": true,
+  "publishRelayList": true,
+  "publishServerList": true
+}

@@ -76,6 +76,8 @@ function photoHashFromRumor(rumor: UnwrappedRumor): string | null {
 export function useReactions(
   manifest: AlbumManifest | null,
   nsecBytes: Uint8Array | null,
+  /** SHA-256 hash of the encrypted album manifest blob */
+  manifestHash: string | null,
   /** Anon pubkey of the current viewer — used to detect own profile in gift wraps */
   viewerAnonPubkey?: string,
 ): UseReactionsReturn {
@@ -197,9 +199,7 @@ export function useReactions(
 
   const react = useCallback(
     async (photoHash: string) => {
-      if (!nsecBytes || !albumPubkey || !relays || !manifest) return;
-
-      const manifestHash = '';
+      if (!nsecBytes || !albumPubkey || !relays || !manifest || !manifestHash) return;
       const anon = accountPubkey ? null : getAnonKeypair();
       const senderPubkey = accountPubkey ?? anon!.pubkey;
       const senderPrivkey = anon?.privkey ?? null;
@@ -209,14 +209,12 @@ export function useReactions(
       await publishMethod(relays, giftWrap);
       addOptimistic(photoHash, rumor);
     },
-    [nsecBytes, albumPubkey, relays, manifest, accountPubkey, addOptimistic],
+    [nsecBytes, albumPubkey, relays, manifest, manifestHash, accountPubkey, addOptimistic],
   );
 
   const comment = useCallback(
     async (photoHash: string, text: string) => {
-      if (!nsecBytes || !albumPubkey || !relays || !manifest || !text.trim()) return;
-
-      const manifestHash = '';
+      if (!nsecBytes || !albumPubkey || !relays || !manifest || !manifestHash || !text.trim()) return;
       const anon = accountPubkey ? null : getAnonKeypair();
       const senderPubkey = accountPubkey ?? anon!.pubkey;
       const senderPrivkey = anon?.privkey ?? null;
@@ -226,7 +224,7 @@ export function useReactions(
       await publishMethod(relays, giftWrap);
       addOptimistic(photoHash, rumor);
     },
-    [nsecBytes, albumPubkey, relays, manifest, accountPubkey, addOptimistic],
+    [nsecBytes, albumPubkey, relays, manifest, manifestHash, accountPubkey, addOptimistic],
   );
 
   // If reactions not enabled, return inert state

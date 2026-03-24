@@ -40,10 +40,10 @@ export default function AnonNameDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+      className="fixed inset-0 z-50 flex items-center justify-center px-3 py-4 bg-black/70"
       onClick={(e) => { if (e.target === e.currentTarget) onDismiss(); }}
     >
-      <div className="w-full max-w-sm rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl p-6 space-y-5">
+      <div className="w-full max-w-sm rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl p-4 sm:p-6 space-y-5">
         <div>
           {hasProfile ? (
             <>
@@ -77,13 +77,13 @@ export default function AnonNameDialog({
           }}
           placeholder={hasProfile ? savedName! : generatedName}
           maxLength={64}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 transition-colors"
+          className="w-full rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-base sm:text-sm text-zinc-100 placeholder-zinc-600 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 transition-colors"
         />
 
         <div className="flex gap-2">
           <button
             onClick={onDismiss}
-            className="flex-1 rounded-lg border border-zinc-700 bg-transparent px-3 py-2 text-sm text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+            className="flex-1 min-w-0 rounded-lg border border-zinc-700 bg-transparent px-3 py-2 text-sm text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors truncate"
           >
             {hasProfile ? 'Cancel' : `Keep ${generatedName.split(' ')[0]}`}
           </button>

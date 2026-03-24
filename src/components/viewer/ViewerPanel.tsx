@@ -39,7 +39,7 @@ export default function ViewerPanel({ hash }: Props) {
   const viewerPubkey = anonKeypair?.pubkey ?? accountPubkey ?? '';
 
   const { reactionsByPhoto, react, comment, loading: reactionsLoading, seenAnonProfileName } =
-    useReactions(viewer.manifest, viewer.nsecBytes, anonKeypair?.pubkey);
+    useReactions(viewer.manifest, viewer.nsecBytes, viewer.manifestHash, anonKeypair?.pubkey);
 
   // Build the set of photo hashes this viewer has already reacted to from relay data.
   // Falls back to an optimistic local-only set for reactions sent this session.
@@ -100,6 +100,8 @@ export default function ViewerPanel({ hash }: Props) {
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [gridFullscreen, setGridFullscreen] = useState(false);
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const lastScrollY = useRef(0);
   const [nameDialogOpen, setNameDialogOpen] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const downloadMenuRef = useRef<HTMLDivElement>(null);
@@ -142,6 +144,21 @@ export default function ViewerPanel({ hash }: Props) {
     const handler = () => setGridFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", handler);
     return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
+  // Smart sticky header: hide on scroll down, reveal on scroll up
+  useEffect(() => {
+    const handler = () => {
+      const current = window.scrollY;
+      if (current > lastScrollY.current + 8) {
+        setHeaderVisible(false);
+      } else if (current < lastScrollY.current - 8) {
+        setHeaderVisible(true);
+      }
+      lastScrollY.current = current;
+    };
+    window.addEventListener("scroll", handler, { passive: true });
+    return () => window.removeEventListener("scroll", handler);
   }, []);
 
   const toggleGridFullscreen = useCallback(() => {
@@ -232,7 +249,7 @@ export default function ViewerPanel({ hash }: Props) {
       <main className="min-h-screen flex items-center justify-center p-8">
         <div className="max-w-sm w-full rounded-xl border border-zinc-800 bg-zinc-900/50 p-8 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
-            <svg className="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <svg className="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
             </svg>
           </div>
@@ -250,11 +267,15 @@ export default function ViewerPanel({ hash }: Props) {
   const manifest = viewer.manifest!;
   const photoCount = manifest.photos.length;
   const reactionsEnabled = manifest.v === 2 && !!manifest.reactions;
+  const headerClassName = `sticky top-0 z-30 flex items-center justify-between px-5 py-4 border-b border-zinc-800 bg-zinc-950 transition-transform duration-300${gridFullscreen ? " hidden" : ""} ${headerVisible ? "translate-y-0" : "-translate-y-full"}`;
+  const headerActionButtonClass = "h-9 w-9 items-center justify-center rounded-full transition-colors";
+  const downloadTriggerClass = `${headerActionButtonClass} flex disabled:opacity-50 disabled:cursor-not-allowed ${downloadMenuOpen ? "bg-zinc-700 text-white" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white"}`;
+  const downloadMenuItemClass = "w-full flex items-center gap-2 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800 transition-colors";
 
   return (
     <main className="min-h-screen">
-      {/* Gallery header — hidden in fullscreen */}
-      <header className={`flex items-center justify-between px-5 py-4 border-b border-zinc-800${gridFullscreen ? " hidden" : ""}`}>
+      {/* Gallery header — sticky with smart hide-on-scroll-down / reveal-on-scroll-up */}
+      <header className={headerClassName}>
         <div>
           <h1 className="text-lg font-semibold tracking-tight text-zinc-100">
             {manifest.title ?? "Photo Album"}
@@ -268,9 +289,9 @@ export default function ViewerPanel({ hash }: Props) {
         <button
           onClick={toggleGridFullscreen}
           aria-label="Toggle fullscreen"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors"
+          className={`${headerActionButtonClass} hidden md:flex bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white`}
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
           </svg>
         </button>
@@ -280,10 +301,9 @@ export default function ViewerPanel({ hash }: Props) {
             onClick={() => setDownloadMenuOpen(o => !o)}
             disabled={viewer.downloadProgress !== null}
             aria-label="Download"
-            className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed
-              ${downloadMenuOpen ? 'bg-zinc-700 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white'}`}
+            className={downloadTriggerClass}
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
             </svg>
           </button>
@@ -292,9 +312,9 @@ export default function ViewerPanel({ hash }: Props) {
             <div className="absolute right-0 top-full mt-1 z-20 w-44 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl py-1">
               <button
                 onClick={() => handleDownloadAll('zip')}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800 transition-colors"
+                className={downloadMenuItemClass}
               >
-                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
                 </svg>
                 Download as ZIP
@@ -303,9 +323,9 @@ export default function ViewerPanel({ hash }: Props) {
                 onClick={() => handleDownloadAll('files')}
                 disabled={viewer.isIOS}
                 title={viewer.isIOS ? "Not supported on iOS" : undefined}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className={`${downloadMenuItemClass} disabled:opacity-40 disabled:cursor-not-allowed`}
               >
-                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z" />
                 </svg>
                 Individual files

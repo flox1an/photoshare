@@ -98,7 +98,7 @@ export default function ThumbnailGrid({
   );
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 p-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 px-1 py-3 sm:px-3">
       {columns.map((col, c) => (
         <div key={c} className="flex flex-col gap-1.5">
           {col.map((i) => {
