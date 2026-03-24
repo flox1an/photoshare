@@ -58,6 +58,7 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
 
   const createdUrlsRef = useRef<string[]>([]);
+  const loadingThumbHashesRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!opts?.hash) return;
@@ -237,6 +238,8 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
       const photo = manifest.photos[index];
       if (!photo) return;
       if (thumbUrls[photo.thumbHash]) return;
+      if (loadingThumbHashesRef.current.has(photo.thumbHash)) return;
+      loadingThumbHashesRef.current.add(photo.thumbHash);
 
       void (async () => {
         try {
@@ -248,6 +251,8 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
           setThumbUrls(prev => ({ ...prev, [photo.thumbHash]: objectUrl }));
         } catch {
           // Thumbnail load failure is non-fatal
+        } finally {
+          loadingThumbHashesRef.current.delete(photo.thumbHash);
         }
       })();
     },

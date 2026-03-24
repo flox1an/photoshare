@@ -4,8 +4,7 @@ import { useGesture } from "@use-gesture/react";
 import type { PhotoEntry } from "@/types/album";
 import type { PhotoReactions } from "@/hooks/useReactions";
 import ReactionsPanel from "./ReactionsPanel";
-import HeartsOverlay from "./HeartsOverlay";
-import { CommentIcon } from "./icons";
+import { CommentIcon, HeartIcon } from "./icons";
 import RoundButton from "./RoundButton";
 
 interface LightboxProps {
@@ -311,16 +310,26 @@ export default function Lightbox({
       }}
     >
       {/* Heart button — bottom-right, all devices */}
-      {reactionsByPhoto && photo && onReact && (
-        <div className={`absolute bottom-4 right-4 z-10 transition-opacity duration-500 ${controlsVisible ? "opacity-100" : "opacity-0 pointer-events-none"} ${reactionsPanelOpen ? "max-md:hidden" : ""}`}>
-          <HeartsOverlay
-            photoHash={photo.hash}
-            reactions={reactionsByPhoto.get(photo.hash)}
-            onReact={onReact}
-            hasReacted={hasReacted}
-          />
-        </div>
-      )}
+      {reactionsByPhoto && photo && onReact && (() => {
+        const heartCount = reactionsByPhoto.get(photo.hash)?.reactions.length ?? 0;
+        return (
+          <div className={`absolute bottom-4 right-4 z-10 transition-opacity duration-500 ${controlsVisible ? "opacity-100" : "opacity-0 pointer-events-none"} ${reactionsPanelOpen ? "max-md:hidden" : ""}`}>
+            <RoundButton
+              pill
+              onClick={() => void onReact(photo.hash)}
+              disabled={hasReacted}
+              aria-label={hasReacted ? "Liked" : "Like"}
+              className={hasReacted ? "disabled:opacity-100" : undefined}
+            >
+              <HeartIcon
+                className={`h-5 w-5 shrink-0 ${hasReacted ? "text-rose-500" : ""}`}
+                solid={hasReacted}
+              />
+              {heartCount > 0 && <span className="tabular-nums">{heartCount}</span>}
+            </RoundButton>
+          </div>
+        );
+      })()}
 
       {/* Top-right controls */}
       <div className={`absolute top-4 right-4 z-10 flex items-center gap-2 transition-opacity duration-500 ${controlsVisible ? "opacity-100" : "opacity-0 pointer-events-none"} ${reactionsPanelOpen ? "max-md:hidden" : ""}`}>

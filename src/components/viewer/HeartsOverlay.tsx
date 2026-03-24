@@ -26,9 +26,12 @@ export default function HeartsOverlay({
       onClick={() => void onReact(photoHash)}
       disabled={hasReacted}
       aria-label={hasReacted ? 'Liked' : 'Like'}
-      colorClass={hasReacted ? 'bg-rose-500/30 text-rose-300' : undefined}
+      className={hasReacted ? 'disabled:opacity-100' : undefined}
     >
-      <HeartIcon className="w-5 h-5 shrink-0" solid={hasReacted} />
+      <HeartIcon
+        className={`w-5 h-5 shrink-0 ${hasReacted ? 'text-rose-500' : ''}`}
+        solid={hasReacted}
+      />
       {count > 0 && <span className="tabular-nums">{count}</span>}
     </RoundButton>
   );

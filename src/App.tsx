@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { EventStoreProvider } from "applesauce-react";
 import { NostrAccountRestorer } from "@/components/auth/NostrAccountRestorer";
+import SystemThemeSync from "@/components/theme/SystemThemeSync";
 import { eventStore } from "@/lib/nostr/eventStore";
 
 const UploadPanel = lazy(() => import("@/components/upload/UploadPanel"));
@@ -29,6 +30,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <EventStoreProvider eventStore={eventStore}>
+      <SystemThemeSync />
       <NostrAccountRestorer />
       <Routes>
         <Route

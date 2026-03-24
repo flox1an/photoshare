@@ -4,6 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0a0a0a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="PhotoShare" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <script>
+      (() => {
+        const dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const theme = dark ? "dark" : "light";
+        const root = document.documentElement;
+        root.dataset.theme = theme;
+        root.style.colorScheme = theme;
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", dark ? "#0a0a0a" : "#f4f4f5");
+      })();
+    </script>
     <title>PhotoShare — Encrypted Photo Albums on Nostr</title>
     <meta name="description" content="Share encrypted photo albums via Nostr. Nothing leaves your device unencrypted." />
     <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
