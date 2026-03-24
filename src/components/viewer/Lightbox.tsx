@@ -55,6 +55,7 @@ export default function Lightbox({
   const [scale, setScale] = useState(1);
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [hidePlaceholder, setHidePlaceholder] = useState(false);
   const scaleRef = useRef(1);
   const translateRef = useRef({ x: 0, y: 0 });
   const isPinchingRef = useRef(false);
@@ -128,11 +129,22 @@ export default function Lightbox({
     resetZoom();
     // If this photo's full image was already loaded (e.g. preloaded in adjacent slot), skip blur/spinner
     setImageLoaded(photo ? loadedHashesRef.current.has(photo.hash) : false);
+    setHidePlaceholder(false);
     naturalSizeRef.current = null;
     navDirectionRef.current = null;
     setSlideTransition(undefined);
     setSlideX(0);
   }, [currentIndex, resetZoom]);
+
+  // Let the full image start fading in before hiding the blurred placeholder
+  useEffect(() => {
+    if (!imageLoaded) {
+      setHidePlaceholder(false);
+      return;
+    }
+    const t = setTimeout(() => setHidePlaceholder(true), 180);
+    return () => clearTimeout(t);
+  }, [imageLoaded]);
 
   const navigateWithSlide = useCallback((direction: "next" | "prev") => {
     hideMobileNav();
@@ -468,8 +480,8 @@ export default function Lightbox({
               {photo && thumbUrls[photo.thumbHash] && (
                 <img
                   src={thumbUrls[photo.thumbHash]}
-                  className="absolute inset-0 w-full h-full object-contain blur-sm brightness-75 transition-opacity duration-300"
-                  style={{ opacity: imageLoaded ? 0 : 1 }}
+                  className="absolute inset-0 w-full h-full object-contain blur-sm transition-opacity duration-300"
+                  style={{ opacity: hidePlaceholder ? 0 : 1 }}
                   alt=""
                   draggable={false}
                 />

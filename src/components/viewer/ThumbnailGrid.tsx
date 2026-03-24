@@ -7,9 +7,7 @@ import ReactionsBadge from "./ReactionsBadge";
 
 const GRID_GAP_PX = 6; // tailwind gap-1.5
 const VIRTUAL_OVERSCAN_PX = 900;
-const DEFERRED_FADE_THRESHOLD_MS = 200;
-const SCROLL_QUANTIZE_PX = 96;
-const VIRTUALIZE_MIN_ITEMS = 180;
+const VIRTUALIZE_MIN_ITEMS = 400;
 
 interface LayoutEntry {
   index: number;
@@ -62,11 +60,11 @@ function useViewport() {
       if (frame) return;
       frame = requestAnimationFrame(() => {
         frame = 0;
-        const quantizedY = Math.floor(window.scrollY / SCROLL_QUANTIZE_PX) * SCROLL_QUANTIZE_PX;
+        const nextY = window.scrollY;
         const nextHeight = window.innerHeight;
         setViewport((prev) => {
-          if (prev.scrollY === quantizedY && prev.height === nextHeight) return prev;
-          return { scrollY: quantizedY, height: nextHeight };
+          if (prev.scrollY === nextY && prev.height === nextHeight) return prev;
+          return { scrollY: nextY, height: nextHeight };
         });
       });
     };
@@ -170,53 +168,16 @@ const ThumbnailTile = memo(function ThumbnailTile({
   hearts,
   comments,
 }: ThumbnailTileProps) {
-  const placeholderStartedAtRef = useRef<number | null>(objectUrl ? null : Date.now());
-  const [shouldFadeImageIn, setShouldFadeImageIn] = useState(false);
-  // If a tile mounts with an existing object URL, keep it visible immediately.
-  // This avoids a one-frame flash when virtualized tiles remount.
-  const [imageVisible, setImageVisible] = useState(!!objectUrl);
-
-  useEffect(() => {
-    if (!objectUrl) {
-      if (placeholderStartedAtRef.current === null) {
-        placeholderStartedAtRef.current = Date.now();
-      }
-      setImageVisible(false);
-      setShouldFadeImageIn(false);
-      return;
-    }
-
-    const started = placeholderStartedAtRef.current;
-    if (started === null) {
-      setShouldFadeImageIn(false);
-      setImageVisible(true);
-      return;
-    }
-
-    const deferred = Date.now() - started >= DEFERRED_FADE_THRESHOLD_MS;
-    setShouldFadeImageIn(deferred);
-    setImageVisible(!deferred || !photo.thumbhash);
-    placeholderStartedAtRef.current = null;
-  }, [objectUrl, photo.thumbhash]);
-
   if (objectUrl) {
     return (
       <div className="group relative cursor-pointer h-full" onClick={() => onPhotoClick(index)}>
-        {photo.thumbhash && (
-          <ThumbhashCanvas
-            hash={photo.thumbhash}
-            aspectRatio={`${photo.width}/${photo.height}`}
-            className={`absolute inset-0 h-full w-full transition-opacity duration-300 ${imageVisible ? "opacity-0" : "opacity-100"}`}
-          />
-        )}
         <img
           src={objectUrl}
           style={{ aspectRatio: `${photo.width}/${photo.height}` }}
-          className={`w-full object-cover rounded-md group-hover:brightness-110 ${shouldFadeImageIn ? "transition-opacity duration-300" : ""} ${imageVisible ? "opacity-100" : "opacity-0"}`}
+          className="w-full object-cover rounded-md group-hover:brightness-110 transition-all"
           alt={photo.filename}
           loading="lazy"
           decoding="async"
-          onLoad={() => setImageVisible(true)}
         />
         <div className="absolute inset-x-0 bottom-0 flex items-end rounded-b-md
           bg-gradient-to-t from-black/60 via-black/20 to-transparent
@@ -259,11 +220,17 @@ export default function ThumbnailGrid({
   onPhotoClick,
   reactionsByPhoto,
 }: ThumbnailGridProps) {
+  const [introVisible, setIntroVisible] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
   const colCount = useColumnCount();
   const { scrollY, height: viewportHeight } = useViewport();
   const gridWidth = useElementWidth(gridRef);
   const shouldVirtualize = photos.length >= VIRTUALIZE_MIN_ITEMS;
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setIntroVisible(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   const columns = useMemo(() => distributeToColumns(photos, colCount), [photos, colCount]);
 
@@ -300,13 +267,19 @@ export default function ThumbnailGrid({
   }, [layouts, windowStart, windowEnd]);
 
   useEffect(() => {
-    visibleIndices.forEach((index) => loadThumbnail(index));
-  }, [visibleIndices, loadThumbnail]);
+    if (shouldVirtualize) {
+      visibleIndices.forEach((index) => loadThumbnail(index));
+      return;
+    }
+    for (let i = 0; i < photos.length; i++) {
+      loadThumbnail(i);
+    }
+  }, [shouldVirtualize, visibleIndices, photos.length, loadThumbnail]);
 
   return (
     <div
       ref={gridRef}
-      className="grid gap-1.5 px-1 py-3 sm:px-3"
+      className={`grid gap-1.5 px-1 py-3 sm:px-3 transition-opacity duration-300 ${introVisible ? "opacity-100" : "opacity-0"}`}
       style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
     >
       {layouts.map((layout, c) => (
