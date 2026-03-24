@@ -28,6 +28,8 @@ interface LightboxProps {
   onEditName?: () => void;
   /** Whether the current viewer has already reacted to the current photo */
   hasReacted?: boolean;
+  /** Hashes of full images that failed to load from all servers */
+  failedHashes?: Record<string, true>;
 }
 
 export default function Lightbox({
@@ -47,6 +49,7 @@ export default function Lightbox({
   onLoginRequest,
   onEditName,
   hasReacted,
+  failedHashes,
 }: LightboxProps) {
   const photo = photos[currentIndex];
   const prevPhoto = currentIndex > 0 ? photos[currentIndex - 1] : null;
@@ -488,10 +491,19 @@ export default function Lightbox({
                 />
               )}
 
-              {/* Loading spinner — shown while full-res is loading */}
+              {/* Loading spinner or not-found error — shown while full-res is loading */}
               {photo && !imageLoaded && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="w-6 h-6 border-2 border-zinc-600 border-t-zinc-300 rounded-full animate-spin" />
+                  {failedHashes?.[photo.hash] ? (
+                    <div className="flex flex-col items-center gap-2 text-zinc-500">
+                      <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                      </svg>
+                      <span className="text-xs">Image not available</span>
+                    </div>
+                  ) : (
+                    <div className="w-6 h-6 border-2 border-zinc-600 border-t-zinc-300 rounded-full animate-spin" />
+                  )}
                 </div>
               )}
 

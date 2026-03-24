@@ -2,6 +2,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useAlbumViewer } from "@/hooks/useAlbumViewer";
 import type { DownloadMode } from "@/hooks/useAlbumViewer";
+import { useUserBlossomServers } from "@/hooks/useUserBlossomServers";
 import { useReactions } from "@/hooks/useReactions";
 import { useNostrAccountStore } from "@/store/nostrAccountStore";
 import { getAnonKeypair } from "@/lib/nostr/anonIdentity";
@@ -30,11 +31,12 @@ interface Props {
 }
 
 export default function ViewerPanel({ hash }: Props) {
-  const viewer = useAlbumViewer({ hash });
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-
   // The pubkey that represents the current viewer (logged-in or persistent anon)
   const accountPubkey = useNostrAccountStore((s) => s.pubkey);
+  const userBlossomServers = useUserBlossomServers(accountPubkey);
+
+  const viewer = useAlbumViewer({ hash, userBlossomServers });
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const anonKeypair = useMemo(() => accountPubkey ? null : getAnonKeypair(), [accountPubkey]);
   const viewerPubkey = anonKeypair?.pubkey ?? accountPubkey ?? '';
 
@@ -399,6 +401,7 @@ export default function ViewerPanel({ hash }: Props) {
           onLoginRequest={() => setLoginOpen(true)}
           onEditName={reactionsEnabled ? () => setNameDialogOpen(true) : undefined}
           hasReacted={lightboxIndex !== null ? reactedHashes.has(manifest.photos[lightboxIndex]?.hash ?? '') : false}
+          failedHashes={viewer.failedFullHashes}
         />
       )}
 

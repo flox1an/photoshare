@@ -23,6 +23,8 @@ export interface AlbumViewerState {
   manifestHash: string | null;
   thumbUrls: Record<string, string>;
   fullUrls: Record<string, string>;
+  /** Hashes of full images that failed to load from all servers */
+  failedFullHashes: Record<string, true>;
   albumKey: CryptoKey | null;
   /** Raw nsec bytes from the URL fragment — present for v2 albums, null for v1 */
   nsecBytes: Uint8Array | null;
@@ -45,7 +47,7 @@ export interface AlbumViewerState {
   loadFullImage: (index: number) => void;
 }
 
-export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
+export function useAlbumViewer(opts?: { hash?: string; userBlossomServers?: string[] }): AlbumViewerState {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
   const [manifest, setManifest] = useState<AlbumManifest | null>(null);
@@ -56,6 +58,7 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
   const [nsecBytes, setNsecBytes] = useState<Uint8Array | null>(null);
   const [resolvedServer, setResolvedServer] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
+  const [failedFullHashes, setFailedFullHashes] = useState<Record<string, true>>({});
 
   const createdUrlsRef = useRef<string[]>([]);
   const loadingThumbHashesRef = useRef<Set<string>>(new Set());
@@ -170,14 +173,17 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
     URL.revokeObjectURL(url);
   }, []);
 
-  /** Fetch and decrypt a blob, trying resolvedServer first then fallback */
+  const userBlossomServers = opts?.userBlossomServers ?? [];
+
+  /** Fetch and decrypt a blob, trying resolvedServer first, then user's blossom servers, then defaults */
   const fetchAndDecrypt = useCallback(
     async (hash: string, key: CryptoKey): Promise<ArrayBuffer> => {
-      const hints = resolvedServer ? [resolvedServer] : [];
+      const hints = [...(resolvedServer ? [resolvedServer] : []), ...userBlossomServers];
       const { data } = await resolveAndFetch(hash, hints);
       return decryptBlob(new Uint8Array(data), key);
     },
-    [resolvedServer],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [resolvedServer, userBlossomServers.join(',')],
   );
 
   const downloadSingle = useCallback(
@@ -278,7 +284,7 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
           createdUrlsRef.current.push(objectUrl);
           setFullUrls(prev => ({ ...prev, [photo.hash]: objectUrl }));
         } catch {
-          // Full image load failure is non-fatal
+          setFailedFullHashes(prev => ({ ...prev, [photo.hash]: true }));
         } finally {
           loadingFullHashesRef.current.delete(photo.hash);
         }
@@ -294,6 +300,7 @@ export function useAlbumViewer(opts?: { hash?: string }): AlbumViewerState {
     manifestHash,
     thumbUrls,
     fullUrls,
+    failedFullHashes,
     albumKey,
     nsecBytes,
     resolvedServer,
