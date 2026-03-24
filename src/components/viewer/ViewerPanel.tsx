@@ -267,6 +267,10 @@ export default function ViewerPanel({ hash }: Props) {
   const manifest = viewer.manifest!;
   const photoCount = manifest.photos.length;
   const reactionsEnabled = manifest.v === 2 && !!manifest.reactions;
+  const isExpired =
+    manifest.v === 2 && manifest.expiresAt
+      ? new Date(manifest.expiresAt) < new Date()
+      : false;
   const headerClassName = `sticky top-0 z-30 flex items-center justify-between px-5 py-4 border-b border-zinc-800 bg-zinc-950 transition-transform duration-300${gridFullscreen ? " hidden" : ""} ${headerVisible ? "translate-y-0" : "-translate-y-full"}`;
   const headerActionButtonClass = "h-9 w-9 items-center justify-center rounded-full transition-colors";
   const downloadTriggerClass = `${headerActionButtonClass} flex disabled:opacity-50 disabled:cursor-not-allowed ${downloadMenuOpen ? "bg-zinc-700 text-white" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white"}`;
@@ -280,8 +284,16 @@ export default function ViewerPanel({ hash }: Props) {
           <h1 className="text-lg font-semibold tracking-tight text-zinc-100">
             {manifest.title ?? "Photo Album"}
           </h1>
-          <p className="text-xs text-zinc-500">
+          <p className="flex items-center gap-2 text-xs text-zinc-500">
             {photoCount} {photoCount === 1 ? "photo" : "photos"}
+            {isExpired && (
+              <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-950 text-amber-400 border border-amber-800/60">
+                <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+                Expired
+              </span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
