@@ -28,7 +28,7 @@ export default function ThumbhashCanvas({ hash, aspectRatio, className }: Thumbh
     <img
       src={dataUrl}
       style={{ aspectRatio, width: "100%", objectFit: "cover" }}
-      className={`rounded-md ${className ?? ""}`}
+      className={`block rounded-md ${className ?? ""}`}
       alt=""
       aria-hidden
     />

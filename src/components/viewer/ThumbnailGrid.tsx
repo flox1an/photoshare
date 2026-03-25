@@ -92,7 +92,12 @@ function useElementWidth<T extends HTMLElement>(ref: RefObject<T | null>) {
     if (!ref.current) return;
 
     const measure = () => {
-      const w = ref.current?.clientWidth ?? 0;
+      const node = ref.current;
+      if (!node) return;
+      const style = window.getComputedStyle(node);
+      const paddingLeft = Number.parseFloat(style.paddingLeft) || 0;
+      const paddingRight = Number.parseFloat(style.paddingRight) || 0;
+      const w = node.clientWidth - paddingLeft - paddingRight;
       if (w > 0) setWidth(w);
     };
 
@@ -170,11 +175,11 @@ const ThumbnailTile = memo(function ThumbnailTile({
 }: ThumbnailTileProps) {
   if (objectUrl) {
     return (
-      <div className="group relative cursor-pointer h-full" onClick={() => onPhotoClick(index)}>
+      <div className="group relative cursor-pointer h-full leading-none" onClick={() => onPhotoClick(index)}>
         <img
           src={objectUrl}
           style={{ aspectRatio: `${photo.width}/${photo.height}` }}
-          className="w-full object-cover rounded-md group-hover:brightness-110 transition-all"
+          className="block w-full object-cover rounded-md group-hover:brightness-110 transition-all"
           alt={photo.filename}
           loading="lazy"
           decoding="async"

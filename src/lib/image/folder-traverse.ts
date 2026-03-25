@@ -28,6 +28,10 @@ export async function readAllEntries(
   return all;
 }
 
+function compareEntryNames(a: FileSystemEntry, b: FileSystemEntry): number {
+  return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+}
+
 async function readFileEntry(entry: FileSystemFileEntry): Promise<File> {
   return new Promise<File>((resolve, reject) => entry.file(resolve, reject));
 }
@@ -51,7 +55,7 @@ export async function forEachFileEntry(
     }
 
     const dirEntry = entry as FileSystemDirectoryEntry;
-    const entries = await readAllEntries(dirEntry.createReader());
+    const entries = (await readAllEntries(dirEntry.createReader())).sort(compareEntryNames);
     for (let i = entries.length - 1; i >= 0; i--) {
       stack.push(entries[i]);
     }

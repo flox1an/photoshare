@@ -62,6 +62,25 @@ describe('traverseEntry', () => {
     expect(result).toContain(file1);
     expect(result).toContain(file2);
   });
+
+  it('returns files in natural filename order for directory entries', async () => {
+    const file10 = makeMockFile('IMG_10.jpg');
+    const file2 = makeMockFile('IMG_2.jpg');
+    const file1 = makeMockFile('IMG_1.jpg');
+    const dirEntry = makeDirectoryEntry([
+      makeFileEntry(file10),
+      makeFileEntry(file2),
+      makeFileEntry(file1),
+    ]);
+
+    const result = await traverseEntry(dirEntry);
+
+    expect(result.map((f) => f.name)).toEqual([
+      'IMG_1.jpg',
+      'IMG_2.jpg',
+      'IMG_10.jpg',
+    ]);
+  });
 });
 
 describe('readAllEntries', () => {
