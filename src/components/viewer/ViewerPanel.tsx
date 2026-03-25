@@ -115,6 +115,7 @@ export default function ViewerPanel({ hash }: Props) {
   const lastScrollY = useRef(0);
   const [nameDialogOpen, setNameDialogOpen] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const downloadMenuRef = useRef<HTMLDivElement>(null);
 
   // After EOSE: if the album doesn't have our profile yet, or has a stale name, publish.
@@ -224,8 +225,9 @@ export default function ViewerPanel({ hash }: Props) {
         viewer.resolvedServer ?? '',
         mode,
       );
+      setActionError(null);
     } catch (err) {
-      alert(`Download failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+      setActionError(`Download failed: ${err instanceof Error ? err.message : "Unknown error"}`);
     }
   }, [viewer]);
 
@@ -236,8 +238,9 @@ export default function ViewerPanel({ hash }: Props) {
       if (!photo) return;
       try {
         await viewer.downloadSingle(photo, viewer.albumKey, viewer.resolvedServer ?? '');
+        setActionError(null);
       } catch (err) {
-        alert(`Download failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+        setActionError(`Download failed: ${err instanceof Error ? err.message : "Unknown error"}`);
       }
     },
     [viewer],
@@ -292,7 +295,14 @@ export default function ViewerPanel({ hash }: Props) {
       <header className={headerClassName}>
         <div>
           <h1 className="text-lg font-semibold tracking-tight text-zinc-100">
-            {manifest.title ?? "Photo Album"}
+            <a
+              href={window.location.origin}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-zinc-300 transition-colors"
+            >
+              {manifest.title ?? "Photo Album"}
+            </a>
           </h1>
           <p className="flex items-center gap-2 text-xs text-zinc-500">
             {photoCount} {photoCount === 1 ? "photo" : "photos"}
@@ -341,23 +351,36 @@ export default function ViewerPanel({ hash }: Props) {
                 </svg>
                 Download as ZIP
               </button>
-              <button
-                onClick={() => handleDownloadAll('files')}
-                disabled={viewer.isIOS}
-                title={viewer.isIOS ? "Not supported on iOS" : undefined}
-                className={`${downloadMenuItemClass} disabled:opacity-40 disabled:cursor-not-allowed`}
-              >
-                <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z" />
-                </svg>
-                Individual files
-                {viewer.isIOS && <span className="ml-auto text-zinc-600">iOS</span>}
-              </button>
+              {!viewer.isIOS && (
+                <button
+                  onClick={() => handleDownloadAll('files')}
+                  className={downloadMenuItemClass}
+                >
+                  <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z" />
+                  </svg>
+                  Individual files
+                </button>
+              )}
             </div>
           )}
         </div>
         </div>
       </header>
+
+      {actionError && (
+        <div className="mx-5 mt-3 flex items-start justify-between gap-3 rounded-lg border border-red-800/70 bg-red-950/40 px-4 py-3 text-sm text-red-200">
+          <p>{actionError}</p>
+          <button
+            type="button"
+            onClick={() => setActionError(null)}
+            className="rounded border border-red-800/70 px-2 py-1 text-xs text-red-200 hover:bg-red-900/40 transition-colors"
+            aria-label="Dismiss download error"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Download progress bar — hidden in fullscreen */}
       {!gridFullscreen && viewer.downloadProgress !== null && (

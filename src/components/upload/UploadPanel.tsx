@@ -71,7 +71,7 @@ function formatNpub(pubkey: string): string {
 
 export default function UploadPanel() {
   const { processBatch, isProcessing, fileMap } = useImageProcessor();
-  const { startUpload, shareLink, isUploading, publishError } = useUpload();
+  const { startUpload, retryPhoto, shareLink, albumExpiresAt, isUploading, publishError } = useUpload();
   const settings = useSettings();
   const photos = useProcessingStore((state) => state.photos);
   const [albumTitle, setAlbumTitle] = useState('');
@@ -215,7 +215,10 @@ export default function UploadPanel() {
         />}
 
         {/* Progress list — appears after first photo is added */}
-        <ProgressList />
+        <ProgressList
+          onRetryPhoto={(photoId) => void retryPhoto(photoId)}
+          isRetrying={isUploading}
+        />
 
         {/* Album title + Upload button — visible as soon as the first photo is ready */}
         {showUploadButton && (
@@ -243,6 +246,7 @@ export default function UploadPanel() {
         {(isUploading || shareLink || publishError) && (
           <ShareCard
             shareLink={shareLink}
+            albumExpiresAt={albumExpiresAt}
             isUploading={isUploading}
             publishError={publishError}
           />

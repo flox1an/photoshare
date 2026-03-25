@@ -5,7 +5,12 @@ import { useProcessingStore } from '@/store/processingStore';
 import { useUploadStore } from '@/store/uploadStore';
 import type { PhotoProcessingStatus } from '@/types/processing';
 
-export function ProgressList() {
+interface ProgressListProps {
+  onRetryPhoto?: (photoId: string) => void;
+  isRetrying?: boolean;
+}
+
+export function ProgressList({ onRetryPhoto, isRetrying = false }: ProgressListProps) {
   const photos = useProcessingStore((state) => state.photos);
   const uploadPhotos = useUploadStore((state) => state.photos);
   const entries = Object.values(photos);
@@ -57,6 +62,9 @@ export function ProgressList() {
               error={displayError}
               thumbData={photo.result?.thumb}
               mimeType={photo.result?.mimeType}
+              photoId={photo.id}
+              onRetryPhoto={onRetryPhoto}
+              isRetrying={isRetrying}
             />
           );
         })}
@@ -66,14 +74,17 @@ export function ProgressList() {
 }
 
 interface PhotoRowProps {
+  photoId: string;
   filename: string;
   status: PhotoProcessingStatus;
   error?: string;
   thumbData?: ArrayBuffer;
   mimeType?: string;
+  onRetryPhoto?: (photoId: string) => void;
+  isRetrying?: boolean;
 }
 
-function PhotoRow({ filename, status, error, thumbData, mimeType }: PhotoRowProps) {
+function PhotoRow({ photoId, filename, status, error, thumbData, mimeType, onRetryPhoto, isRetrying = false }: PhotoRowProps) {
   const [thumbUrl, setThumbUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -98,9 +109,21 @@ function PhotoRow({ filename, status, error, thumbData, mimeType }: PhotoRowProp
       <span className="flex-1 truncate text-zinc-300 font-mono text-xs">{filename}</span>
       <span className="shrink-0 text-[10px] uppercase tracking-wider text-zinc-600">{status}</span>
       {error && (
-        <span className="shrink-0 text-[10px] text-red-400" title={error}>
-          Error
-        </span>
+        <>
+          <span className="shrink-0 text-[10px] text-red-400" title={error}>
+            Error
+          </span>
+          {status === 'error' && onRetryPhoto && (
+            <button
+              type="button"
+              onClick={() => onRetryPhoto(photoId)}
+              disabled={isRetrying}
+              className="shrink-0 rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-zinc-300 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+            >
+              Retry
+            </button>
+          )}
+        </>
       )}
     </li>
   );

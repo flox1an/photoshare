@@ -11,6 +11,10 @@ interface DropZoneProps {
   disabled?: boolean;
 }
 
+function compareEntryNames(a: FileSystemEntry, b: FileSystemEntry): number {
+  return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+}
+
 export function DropZone({ onFiles, isProcessing, disabled = false }: DropZoneProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [scannedCount, setScannedCount] = useState(0);
@@ -45,7 +49,8 @@ export function DropZone({ onFiles, isProcessing, disabled = false }: DropZonePr
       const items = Array.from(e.dataTransfer.items);
       const entries = items
         .map((item) => item.webkitGetAsEntry())
-        .filter(Boolean) as FileSystemEntry[];
+        .filter(Boolean)
+        .sort(compareEntryNames) as FileSystemEntry[];
 
       if (entries.length === 0) {
         setIsScanning(false);
@@ -123,7 +128,7 @@ export function DropZone({ onFiles, isProcessing, disabled = false }: DropZonePr
       <p className="mt-1 text-xs text-zinc-500">
         {isScanning ? 'Preparing upload queue...' : 'or click to select files'}
       </p>
-      <p className="mt-3 text-xs text-zinc-600">JPEG, PNG, HEIC, WebP — up to 200 photos</p>
+      <p className="mt-3 text-xs text-zinc-600">JPEG, PNG, HEIC, WebP</p>
     </div>
   );
 }

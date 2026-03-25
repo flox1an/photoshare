@@ -6,15 +6,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useUpload } from '@/hooks/useUpload';
+import type { BlobDescriptor } from '@/store/uploadStore';
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
+const mockUploadPhotos: Record<string, { status: string }> = {};
+
 vi.mock('@/lib/crypto', () => ({
-  generateAlbumKey: vi.fn().mockResolvedValue({} as CryptoKey),
+  generateAlbumNsec: vi.fn().mockReturnValue(new Uint8Array(32)),
+  deriveAlbumAESKey: vi.fn().mockResolvedValue({} as CryptoKey),
   encryptBlob: vi.fn(),
-  exportKeyToBase64url: vi.fn().mockResolvedValue('mock-key-b64url'),
+  uint8ArrayToBase64url: vi.fn().mockReturnValue('mock-key-b64url'),
 }));
 
 vi.mock('@/lib/blossom/signer', () => ({
@@ -32,20 +36,25 @@ vi.mock('@/lib/blossom/manifest', () => ({
 }));
 
 vi.mock('@/store/uploadStore', () => ({
-  useUploadStore: vi.fn().mockReturnValue({
-    addPhoto: vi.fn(),
-    setEncrypting: vi.fn(),
-    setUploading: vi.fn(),
-    setUploadDone: vi.fn(),
-    setUploadError: vi.fn(),
-  }),
+  useUploadStore: Object.assign(
+    vi.fn().mockImplementation(() => ({
+      addPhoto: (id: string) => { mockUploadPhotos[id] = { status: 'pending' }; },
+      setEncrypting: (id: string) => { mockUploadPhotos[id] = { status: 'encrypting' }; },
+      setUploading: (id: string) => { mockUploadPhotos[id] = { status: 'uploading' }; },
+      setUploadDone: (id: string, _descriptor: BlobDescriptor) => { mockUploadPhotos[id] = { status: 'done' }; },
+      setUploadError: (id: string, _error: string) => { mockUploadPhotos[id] = { status: 'error' }; },
+    })),
+    {
+      getState: () => ({ photos: mockUploadPhotos }),
+    },
+  ),
 }));
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-import { encryptBlob, exportKeyToBase64url } from '@/lib/crypto';
+import { encryptBlob, uint8ArrayToBase64url } from '@/lib/crypto';
 import { sha256Hex, uploadBlob } from '@/lib/blossom/upload';
 import { encryptManifest } from '@/lib/blossom/manifest';
 
@@ -53,7 +62,7 @@ const mockEncryptBlob = encryptBlob as ReturnType<typeof vi.fn>;
 const mockSha256Hex = sha256Hex as ReturnType<typeof vi.fn>;
 const mockUploadBlob = uploadBlob as ReturnType<typeof vi.fn>;
 const mockEncryptManifest = encryptManifest as ReturnType<typeof vi.fn>;
-const mockExportKeyToBase64url = exportKeyToBase64url as ReturnType<typeof vi.fn>;
+const mockUint8ArrayToBase64url = uint8ArrayToBase64url as ReturnType<typeof vi.fn>;
 
 import type { UploadItem } from '@/hooks/useUpload';
 
@@ -108,11 +117,12 @@ function setupHappyPath() {
     .mockResolvedValueOnce(makeBlobDescriptor(MANIFEST_HASH)); // manifest upload
 
   mockEncryptManifest.mockResolvedValue(MANIFEST_BLOB);
-  mockExportKeyToBase64url.mockResolvedValue('mock-key-b64url');
+  mockUint8ArrayToBase64url.mockReturnValue('mock-key-b64url');
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  Object.keys(mockUploadPhotos).forEach((key) => delete mockUploadPhotos[key]);
 });
 
 // ---------------------------------------------------------------------------
@@ -173,7 +183,7 @@ describe('useUpload — Blossom-only manifest upload', () => {
       .mockResolvedValueOnce(makeBlobDescriptor(MANIFEST_HASH));
 
     mockEncryptManifest.mockResolvedValue(MANIFEST_BLOB);
-    mockExportKeyToBase64url.mockResolvedValue('mock-key-b64url');
+    mockUint8ArrayToBase64url.mockReturnValue('mock-key-b64url');
 
     const { result } = renderHook(() => useUpload());
 
@@ -217,7 +227,7 @@ describe('useUpload — Blossom-only manifest upload', () => {
     });
 
     expect(result.current.publishError).toBe(
-      'One or more photos failed to upload after 3 retries',
+      '1 photo failed to upload after 3 retries',
     );
   });
 

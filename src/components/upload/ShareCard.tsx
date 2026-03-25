@@ -5,6 +5,7 @@ import { useUploadStore } from '@/store/uploadStore';
 
 interface ShareCardProps {
   shareLink: string | null;
+  albumExpiresAt: string | null;
   isUploading: boolean;
   publishError: string | null;
 }
@@ -18,7 +19,19 @@ interface ShareCardProps {
  *   publishError non-null             → red error message
  *   all null/false                    → null (nothing to render)
  */
-export function ShareCard({ shareLink, isUploading, publishError }: ShareCardProps) {
+function formatExpiration(expiresAt: string): string {
+  const d = new Date(expiresAt);
+  if (Number.isNaN(d.getTime())) return expiresAt;
+  return d.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+export function ShareCard({ shareLink, albumExpiresAt, isUploading, publishError }: ShareCardProps) {
   const [copied, setCopied] = useState(false);
   const uploadPhotos = useUploadStore((state) => state.photos);
   const uploadEntries = Object.values(uploadPhotos);
@@ -61,6 +74,22 @@ export function ShareCard({ shareLink, isUploading, publishError }: ShareCardPro
       {/* Share link UI — shown once relay confirms ok=true */}
       {shareLink && (
         <div className="space-y-4">
+          <div className="rounded-lg border border-red-800/70 bg-red-950/30 px-4 py-3">
+            <p className="text-[11px] uppercase tracking-wider text-red-300">Important</p>
+            <p className="mt-1 text-sm text-red-200">
+              This link is only shown <strong>ONCE</strong>. Save the full URL including everything after
+              {' '}
+              <span className="font-mono">#</span>
+              {' '}
+              before leaving this page.
+            </p>
+          </div>
+          {albumExpiresAt && (
+            <div className="rounded-lg border border-amber-800/70 bg-amber-950/30 px-4 py-3">
+              <p className="text-[11px] uppercase tracking-wider text-amber-300">Album expires</p>
+              <p className="mt-1 text-sm text-amber-200">{formatExpiration(albumExpiresAt)}</p>
+            </div>
+          )}
           <div>
             <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">Share link</p>
             <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 px-4 py-3">
