@@ -74,20 +74,10 @@ export function ShareCard({ shareLink, albumExpiresAt, isUploading, publishError
       {/* Share link UI — shown once relay confirms ok=true */}
       {shareLink && (
         <div className="space-y-4">
-          <div className="rounded-lg border border-red-800/70 bg-red-950/30 px-4 py-3">
-            <p className="text-[11px] uppercase tracking-wider text-red-300">Important</p>
-            <p className="mt-1 text-sm text-red-200">
-              This link is only shown <strong>ONCE</strong>. Save the full URL including everything after
-              {' '}
-              <span className="font-mono">#</span>
-              {' '}
-              before leaving this page.
-            </p>
-          </div>
           {albumExpiresAt && (
-            <div className="rounded-lg border border-amber-800/70 bg-amber-950/30 px-4 py-3">
-              <p className="text-[11px] uppercase tracking-wider text-amber-300">Album expires</p>
-              <p className="mt-1 text-sm text-amber-200">{formatExpiration(albumExpiresAt)}</p>
+            <div className="rounded-lg border border-sky-800/60 bg-sky-950/25 px-4 py-3">
+              <p className="text-[11px] uppercase tracking-wider text-sky-300">Album expires</p>
+              <p className="mt-1 text-sm text-sky-200">{formatExpiration(albumExpiresAt)}</p>
             </div>
           )}
           <div>
@@ -97,6 +87,9 @@ export function ShareCard({ shareLink, albumExpiresAt, isUploading, publishError
                 {window.location.origin + shareLink}
               </p>
             </div>
+            <p className="mt-2 rounded-lg border border-zinc-700/80 bg-zinc-800/35 px-3 py-2 text-xs text-zinc-400">
+              This link is only shown <strong className="text-zinc-300">ONCE</strong>. Make sure to save the share URL to access this album in the future.
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
