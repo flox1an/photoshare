@@ -12,7 +12,7 @@
  *
  * HEIC note: uses heic-to/next (worker-safe build) — NOT heic2any (throws window is not defined)
  * Safari note: OffscreenCanvas.convertToBlob({ type: 'image/webp' }) returns image/png on Safari.
- *   We check blob.type and populate mimeType accordingly. Viewer handles both transparently.
+ *   We detect this and re-encode as JPEG to avoid the massive PNG file sizes (10–20 MB vs 2–4 MB).
  */
 import * as Comlink from 'comlink';
 import { heicTo } from 'heic-to/next';
@@ -41,8 +41,13 @@ async function encodeCanvas(
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('OffscreenCanvas 2d context unavailable');
   ctx.drawImage(bitmap, 0, 0, targetW, targetH);
-  // Safari returns image/png silently — check blob.type for actual output format
+  // Safari doesn't support WebP in convertToBlob and silently falls back to PNG,
+  // which produces very large files (10–20 MB vs 2–4 MB). Fall back to JPEG instead.
   const blob = await canvas.convertToBlob({ type: 'image/webp', quality });
+  if (blob.type === 'image/png') {
+    const jpegBlob = await canvas.convertToBlob({ type: 'image/jpeg', quality });
+    return { buffer: await jpegBlob.arrayBuffer(), mimeType: 'image/jpeg' };
+  }
   return { buffer: await blob.arrayBuffer(), mimeType: blob.type };
 }
 
@@ -94,8 +99,8 @@ const api: ProcessorApi = {
       thumb: thumbBuffer,
       width: origW,   // ORIGINAL dimensions — Phase 4 uses for aspect ratio grid layout
       height: origH,
-      filename: file.name.replace(/\.[^.]+$/, '.webp'),
-      mimeType,       // 'image/webp' normally, 'image/png' on Safari (accepted for v1)
+      filename: file.name.replace(/\.[^.]+$/, mimeType === 'image/jpeg' ? '.jpg' : '.webp'),
+      mimeType,       // 'image/webp' normally, 'image/jpeg' on Safari
       thumbhash,
     }, [fullBuffer, thumbBuffer]);
   },
