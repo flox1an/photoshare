@@ -1,4 +1,4 @@
-# Blossom Server Quality UX — Design Spec
+# Blossom Server Quality UX & Upload Page Redesign — Design Spec
 
 **Date:** 2026-03-26
 **Status:** Approved
@@ -12,17 +12,18 @@ The default Blossom server (`tempstore.apps3.slidestr.net`) deletes files after 
 1. Users share album links that stop working the next day without realising.
 2. The manifest's `expiresAt` field is computed from the user's expiration *setting* (defaulting to 1 week), not from the server's actual enforced limit — so the ShareCard shows a wrong expiry date.
 
-Additionally, all settings are buried inside a collapsible panel inline on the upload page, making them hard to reach and cluttering the interface.
+Additionally, all settings are buried inside a collapsible panel inline on the upload page, making them hard to reach and cluttering the interface. The page also has no clear state progression — the same layout is shown whether the user has zero photos or is ready to upload.
 
 ---
 
 ## Solution Overview
 
-Three coordinated changes:
+Four coordinated changes:
 
 1. **Known servers map** — a small static file mapping server hostnames to metadata.
 2. **Pre-upload warning strip** — shown when the primary server is a known ephemeral server; disappears once Upload is pressed.
 3. **Dedicated `/settings` page** — settings moved out of the inline panel; gear icon in the upload header navigates there; warning strip links there too.
+4. **Upload page state machine** — clear progressive disclosure across four states: empty → photos ready → uploading → done.
 
 ---
 
@@ -121,6 +122,44 @@ The existing `SettingsPanel` component is removed from `UploadPanel` and can be 
 
 ---
 
+## 6. Upload Page State Machine
+
+The upload page (`/`) has four distinct states with clear progressive disclosure. Each state shows only what is relevant.
+
+### State 1 — Empty
+- Header: title + subtitle + gear icon (top-right) + "Sign in" link
+- Drop zone: SVG image icon (stroke style), "Drop photos here", subtitle, "Browse files" button
+- Below drop zone: dim nudge — "Sign in with Nostr to use your own Blossom servers"
+- Nothing else visible
+
+### State 2 — Photos ready
+Triggered once at least one photo finishes processing.
+- Header unchanged
+- Drop zone hidden
+- Photo list — one row per photo: thumbnail swatch, filename, status badge (✓ Ready / ⟳ Converting…)
+- Album title input (appears progressively — not shown on empty state)
+- Warning strip (if primary server is known-ephemeral): `⚠ Temp Store · files expire in 1 day  [Settings →]`
+- Upload button: `Upload N photos`
+
+### State 3 — Uploading
+Triggered once Upload is pressed.
+- Drop zone hidden, album title input hidden, warning strip hidden, Upload button hidden
+- Progress bar: label (`Uploading…`) + counter (`2 / 3`) + track with fill
+- Photo list remains, status badges update to `✓ Uploaded` / `⟳ Uploading…`
+
+### State 4 — Done
+Triggered once the manifest is published and share link is available.
+- Photo list hidden
+- **Album expires** box (sky blue, only shown when `albumExpiresAt` is set)
+- **Link box**: monospace share URL + dim footnote inline: *"Shown once — save this link before leaving the page."*
+- Action row: `Open album ↗` (primary) + `Copy link` (secondary)
+- Below actions: `← Upload another album` link (navigates to `/` and resets state)
+
+### Gear icon
+Present in the header across all four states. Uses a Heroicons-style SVG cog icon (stroke, not emoji). Rendered as a React Router `<Link>` wrapping a `RoundButton` (from `src/components/viewer/RoundButton.tsx`) with `colorClass="bg-zinc-800 text-zinc-500 hover:text-zinc-300 border border-zinc-700"` to match the upload page's zinc palette rather than the lightbox's white/transparent palette.
+
+---
+
 ## Out of Scope
 
 - Querying servers at runtime for their actual expiry policy (BUD-01 or similar). The static map is sufficient for now and avoids network calls on page load.
@@ -139,3 +178,4 @@ The existing `SettingsPanel` component is removed from `UploadPanel` and can be 
 | `src/App.tsx` | Add `/settings` route before `/:hash` |
 | `src/components/upload/SettingsPanel.tsx` | **Delete** once settings page is live |
 | `src/hooks/useUpload.ts` or `useUploadQueueBridge.ts` | Pass effective (capped) expiry to upload pipeline |
+| `src/components/upload/UploadPanel.tsx` | Implement 4-state machine, add SVG gear icon, progressive disclosure |
