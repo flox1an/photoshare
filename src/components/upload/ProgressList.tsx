@@ -8,9 +8,11 @@ import type { PhotoProcessingStatus } from '@/types/processing';
 interface ProgressListProps {
   onRetryPhoto?: (photoId: string) => void;
   isRetrying?: boolean;
+  keepOriginals?: boolean;
+  fileMap?: Map<string, File>;
 }
 
-export function ProgressList({ onRetryPhoto, isRetrying = false }: ProgressListProps) {
+export function ProgressList({ onRetryPhoto, isRetrying = false, keepOriginals = false, fileMap }: ProgressListProps) {
   const photos = useProcessingStore((state) => state.photos);
   const uploadPhotos = useUploadStore((state) => state.photos);
   const entries = Object.values(photos);
@@ -28,10 +30,11 @@ export function ProgressList({ onRetryPhoto, isRetrying = false }: ProgressListP
   }).length;
   const total = entries.length;
 
-  const totalBytes = entries.reduce(
-    (sum, p) => sum + (p.result?.full.byteLength ?? 0) + (p.result?.thumb.byteLength ?? 0),
-    0,
-  );
+  const totalBytes = entries.reduce((sum, p) => {
+    const processed = (p.result?.full.byteLength ?? 0) + (p.result?.thumb.byteLength ?? 0);
+    const original = keepOriginals ? (fileMap?.get(p.id)?.size ?? 0) : 0;
+    return sum + processed + original;
+  }, 0);
   const totalSize = totalBytes >= 1024 * 1024 * 1024
     ? `${(totalBytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
     : `${(totalBytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -134,7 +137,7 @@ function StatusDot({ status }: { status: PhotoProcessingStatus }) {
     pending: 'bg-zinc-600',
     processing: 'bg-blue-400 animate-pulse',
     encrypting: 'bg-violet-400 animate-pulse',
-    uploading: 'bg-amber-400 animate-pulse',
+    uploading: 'bg-rose-300 animate-pulse',
     done: 'bg-emerald-400',
     error: 'bg-red-400',
   };

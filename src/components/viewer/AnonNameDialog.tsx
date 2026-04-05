@@ -40,7 +40,7 @@ export default function AnonNameDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-3 py-4 bg-black/70"
+      className="fixed inset-0 z-50 flex items-center justify-center px-3 py-4 bg-black/70 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onDismiss(); }}
     >
       <div className="w-full max-w-sm rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl p-4 sm:p-6 space-y-5">

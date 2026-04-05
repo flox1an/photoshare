@@ -48,6 +48,7 @@ export interface AlbumViewerState {
 }
 
 export function useAlbumViewer(opts?: { hash?: string; userBlossomServers?: string[] }): AlbumViewerState {
+  const hash = opts?.hash;
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
   const [manifest, setManifest] = useState<AlbumManifest | null>(null);
@@ -75,7 +76,7 @@ export function useAlbumViewer(opts?: { hash?: string; userBlossomServers?: stri
   }, [fullUrls]);
 
   useEffect(() => {
-    if (!opts?.hash) return;
+    if (!hash) return;
     let cancelled = false;
 
     async function init() {
@@ -91,15 +92,15 @@ export function useAlbumViewer(opts?: { hash?: string; userBlossomServers?: stri
         let manifestHash: string;
         let serverHints: string[];
 
-        if (isLegacyToken(opts!.hash!)) {
+        if (isLegacyToken(hash)) {
           // Legacy URL: /{hex64}?xs={domain}#{key}
-          manifestHash = opts!.hash!;
+          manifestHash = hash;
           const params = new URLSearchParams(window.location.search);
           const xsHint = params.get('xs');
           serverHints = xsHint ? [xsHint] : [];
         } else {
           // New opaque URL: /{pathToken}#{key}
-          const { hashBytes, servers } = decodePathToken(opts!.hash!);
+          const { hashBytes, servers } = decodePathToken(hash);
           manifestHash = hashBytesToHex(hashBytes);
           serverHints = servers;
         }
@@ -158,7 +159,7 @@ export function useAlbumViewer(opts?: { hash?: string; userBlossomServers?: stri
 
     void init();
     return () => { cancelled = true; };
-  }, [opts?.hash]);
+  }, [hash]);
 
   useEffect(() => {
     const urls = createdUrlsRef.current;

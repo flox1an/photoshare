@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { nip19 } from 'nostr-tools';
 import { useNostrAccountStore } from '@/store/nostrAccountStore';
 import { useNostrProfile, profileDisplayName } from '@/hooks/useNostrProfile';

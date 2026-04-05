@@ -27,7 +27,8 @@ vi.mock('@/lib/blossom/signer', () => ({
 
 vi.mock('@/lib/blossom/upload', () => ({
   sha256Hex: vi.fn(),
-  buildBlossomUploadAuth: vi.fn().mockResolvedValue('Nostr mock-auth'),
+  buildBlossomUploadBatchAuth: vi.fn().mockResolvedValue('Nostr mock-auth'),
+  chunkHashesForAuth: vi.fn((hashes: string[]) => [hashes]),
   uploadBlob: vi.fn(),
 }));
 

@@ -1,9 +1,12 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
 import { EventStoreProvider } from "applesauce-react";
 import { NostrAccountRestorer } from "@/components/auth/NostrAccountRestorer";
 import SystemThemeSync from "@/components/theme/SystemThemeSync";
 import { eventStore } from "@/lib/nostr/eventStore";
+import { useSettings } from "@/hooks/useSettings";
+import { useImageProcessor } from "@/hooks/useImageProcessor";
+import { SettingsPage } from "@/components/settings/SettingsPage";
 
 const UploadPanel = lazy(() => import("@/components/upload/UploadPanel"));
 const ViewerPanel = lazy(() => import("@/components/viewer/ViewerPanel"));
@@ -24,9 +27,10 @@ function ViewerRoute() {
   return <ViewerPanel hash={hash!} />;
 }
 
-import { useParams } from "react-router-dom";
-
 export default function App() {
+  const settings = useSettings();
+  const imageProcessor = useImageProcessor();
+
   return (
     <BrowserRouter>
       <EventStoreProvider eventStore={eventStore}>
@@ -37,7 +41,15 @@ export default function App() {
           path="/"
           element={
             <Suspense fallback={<LoadingSpinner />}>
-              <UploadPanel />
+              <UploadPanel settings={settings} imageProcessor={imageProcessor} />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <Suspense fallback={<LoadingSpinner message="Loading settings..." />}>
+              <SettingsPage settings={settings} />
             </Suspense>
           }
         />

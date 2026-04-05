@@ -17,7 +17,7 @@ export function SettingsToggleRow({
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-zinc-300"
+        className="mt-0.5 h-4 w-4 shrink-0 appearance-none rounded border border-indigo-300/35 bg-black/42 checked:border-indigo-300/60 checked:bg-indigo-400 focus:ring-2 focus:ring-indigo-300/35 focus:ring-offset-0"
       />
       <div>
         <p className="text-xs font-medium text-zinc-400">{title}</p>

@@ -29,9 +29,16 @@ import {
   uint8ArrayToBase64url,
 } from '@/lib/crypto';
 import { createEphemeralSigner } from '@/lib/blossom/signer';
-import { sha256Hex, buildBlossomUploadAuth, uploadBlob } from '@/lib/blossom/upload';
+import {
+  sha256Hex,
+  buildBlossomUploadBatchAuth,
+  chunkHashesForAuth,
+  uploadBlob,
+} from '@/lib/blossom/upload';
 import { encryptManifest } from '@/lib/blossom/manifest';
 import { encodePathToken, hexToHashBytes } from '@/lib/shareToken';
+import { buildAlbumBlobHashList, publishAlbumCleanupRecord } from '@/lib/nostr/albumCleanupRecord';
+import { resolveUserOutboxRelays } from '@/lib/nostr/relayList';
 import { useUploadStore } from '@/store/uploadStore';
 import { useNostrAccountStore } from '@/store/nostrAccountStore';
 import { DEFAULT_BLOSSOM_SERVER } from '@/lib/config';
@@ -72,11 +79,22 @@ function sleep(ms: number): Promise<void> {
 }
 
 const DEFAULT_EXPIRATION_SECONDS = 7 * 24 * 60 * 60;
+const DEFAULT_CLEANUP_RELAYS = ['wss://nos.lol'];
+
+interface CleanupSigner {
+  getPublicKey: () => Promise<string>;
+  signEvent: (template: { kind: number; created_at: number; tags: string[][]; content: string }) => Promise<unknown>;
+  nip44?: {
+    encrypt: (pubkey: string, plaintext: string) => Promise<string>;
+  };
+}
 
 interface UploadSession {
   nsecBytes: Uint8Array;
   albumKey: CryptoKey;
   signer: unknown;
+  cleanupSigner: CleanupSigner | null;
+  cleanupRelays: string[];
   servers: string[];
   expSec: number;
   title?: string;
@@ -84,6 +102,11 @@ interface UploadSession {
   photoEntries: PhotoEntry[];
   entryIndexByPhotoId: Map<string, number>;
   uploadItemsByPhotoId: Map<string, UploadItem>;
+}
+
+interface UploadBlobPayload {
+  hash: string;
+  data: ArrayBuffer;
 }
 
 function buildUploadErrorMessage(failedCount: number): string {
@@ -103,6 +126,11 @@ export function useUpload(): UseUploadReturn {
 
   const { addPhoto, setEncrypting, setUploading, setUploadDone, setUploadError } = useUploadStore();
 
+  function isAuthError(err: unknown): boolean {
+    if (!(err instanceof Error)) return false;
+    return /\b401\b|\b403\b|unauthorized|forbidden|auth/i.test(err.message);
+  }
+
   const uploadSinglePhoto = useCallback(
     async (photoId: string, photo: ProcessedPhoto, originalFile: File | null | undefined, session: UploadSession): Promise<void> => {
       let lastError: unknown;
@@ -116,61 +144,87 @@ export function useUpload(): UseUploadReturn {
 
           const fullHash = await sha256Hex(fullBlob.buffer as ArrayBuffer);
           const thumbHash = await sha256Hex(thumbBlob.buffer as ArrayBuffer);
+          const payloads: UploadBlobPayload[] = [
+            { hash: fullHash, data: fullBlob.buffer as ArrayBuffer },
+            { hash: thumbHash, data: thumbBlob.buffer as ArrayBuffer },
+          ];
 
           setUploading(photoId);
-
-          const fullAuthHeader = await buildBlossomUploadAuth(session.signer, fullHash);
-          const thumbAuthHeader = await buildBlossomUploadAuth(session.signer, thumbHash);
-
-          const fullDescriptor = await uploadBlob(
-            session.servers[0],
-            fullBlob.buffer as ArrayBuffer,
-            fullAuthHeader,
-            fullHash,
-            undefined,
-            session.expSec,
-          );
-          await uploadBlob(
-            session.servers[0],
-            thumbBlob.buffer as ArrayBuffer,
-            thumbAuthHeader,
-            thumbHash,
-            undefined,
-            session.expSec,
-          );
-
-          for (const mirror of session.servers.slice(1)) {
-            try {
-              const mFullAuth = await buildBlossomUploadAuth(session.signer, fullHash);
-              const mThumbAuth = await buildBlossomUploadAuth(session.signer, thumbHash);
-              await uploadBlob(mirror, fullBlob.buffer as ArrayBuffer, mFullAuth, fullHash, undefined, session.expSec);
-              await uploadBlob(mirror, thumbBlob.buffer as ArrayBuffer, mThumbAuth, thumbHash, undefined, session.expSec);
-            } catch {
-              // Mirror failure is non-fatal
-            }
-          }
 
           let origHash: string | undefined;
           if (originalFile) {
             const origBuffer = await originalFile.arrayBuffer();
             const origBlob = await encryptBlob(origBuffer, session.albumKey);
             origHash = await sha256Hex(origBlob.buffer as ArrayBuffer);
-            const origAuthHeader = await buildBlossomUploadAuth(session.signer, origHash);
-            await uploadBlob(
-              session.servers[0],
-              origBlob.buffer as ArrayBuffer,
-              origAuthHeader,
-              origHash,
-              undefined,
-              session.expSec,
-            );
-            for (const mirror of session.servers.slice(1)) {
-              try {
-                const mOrigAuth = await buildBlossomUploadAuth(session.signer, origHash);
-                await uploadBlob(mirror, origBlob.buffer as ArrayBuffer, mOrigAuth, origHash, undefined, session.expSec);
-              } catch {
-                // Mirror failure is non-fatal
+            payloads.push({ hash: origHash, data: origBlob.buffer as ArrayBuffer });
+          }
+
+          const uploadToServerWithAuthFallback = async (server: string): Promise<Map<string, Awaited<ReturnType<typeof uploadBlob>>>> => {
+            const descriptors = new Map<string, Awaited<ReturnType<typeof uploadBlob>>>();
+            const hashChunks = chunkHashesForAuth(payloads.map((payload) => payload.hash));
+
+            for (const hashChunk of hashChunks) {
+              const chunkAuthHeader = await buildBlossomUploadBatchAuth(
+                session.signer as never,
+                hashChunk,
+                server,
+              );
+              let forceSingleHashForRemaining = false;
+              for (const hash of hashChunk) {
+                const payload = payloads.find((item) => item.hash === hash);
+                if (!payload) continue;
+
+                if (!forceSingleHashForRemaining) {
+                  try {
+                    const descriptor = await uploadBlob(
+                      server,
+                      payload.data,
+                      chunkAuthHeader,
+                      hash,
+                      undefined,
+                      session.expSec,
+                    );
+                    descriptors.set(hash, descriptor);
+                    continue;
+                  } catch (err) {
+                    if (!isAuthError(err) || hashChunk.length <= 1) throw err;
+                    // Server likely doesn't validate multiple x-tags correctly for upload.
+                    // Fall back for this hash and all remaining hashes in this batch.
+                    forceSingleHashForRemaining = true;
+                  }
+                }
+
+                const singleAuthHeader = await buildBlossomUploadBatchAuth(
+                  session.signer as never,
+                  [hash],
+                  server,
+                );
+                const descriptor = await uploadBlob(
+                  server,
+                  payload.data,
+                  singleAuthHeader,
+                  hash,
+                  undefined,
+                  session.expSec,
+                );
+                descriptors.set(hash, descriptor);
               }
+            }
+
+            return descriptors;
+          };
+
+          const primaryDescriptors = await uploadToServerWithAuthFallback(session.servers[0]);
+          const fullDescriptor = primaryDescriptors.get(fullHash);
+          if (!fullDescriptor) {
+            throw new Error(`Primary upload missing full descriptor for hash ${fullHash}`);
+          }
+
+          for (const mirror of session.servers.slice(1)) {
+            try {
+              await uploadToServerWithAuthFallback(mirror);
+            } catch {
+              // Mirror failure is non-fatal
             }
           }
 
@@ -224,19 +278,26 @@ export function useUpload(): UseUploadReturn {
       const manifestBlob = await encryptManifest(manifest, session.albumKey);
       const manifestHash = await sha256Hex(manifestBlob.buffer as ArrayBuffer);
 
-      const manifestAuthHeader = await buildBlossomUploadAuth(session.signer, manifestHash);
-      await uploadBlob(
-        session.servers[0],
-        manifestBlob.buffer as ArrayBuffer,
-        manifestAuthHeader,
-        manifestHash,
-        undefined,
-        session.expSec,
-      );
+      const uploadManifestToServer = async (server: string): Promise<void> => {
+        const manifestAuthHeader = await buildBlossomUploadBatchAuth(
+          session.signer as never,
+          [manifestHash],
+          server,
+        );
+        await uploadBlob(
+          server,
+          manifestBlob.buffer as ArrayBuffer,
+          manifestAuthHeader,
+          manifestHash,
+          undefined,
+          session.expSec,
+        );
+      };
+
+      await uploadManifestToServer(session.servers[0]);
       for (const mirror of session.servers.slice(1)) {
         try {
-          const mAuth = await buildBlossomUploadAuth(session.signer, manifestHash);
-          await uploadBlob(mirror, manifestBlob.buffer as ArrayBuffer, mAuth, manifestHash, undefined, session.expSec);
+          await uploadManifestToServer(mirror);
         } catch {
           // Mirror failure is non-fatal
         }
@@ -252,6 +313,26 @@ export function useUpload(): UseUploadReturn {
       setAlbumExpiresAt(expiresAt ?? null);
       setPublishError(null);
       setShareLink(link);
+
+      if (session.cleanupSigner) {
+        const blobHashes = buildAlbumBlobHashList(session.photoEntries, manifestHash);
+        const expiresAtUnix = Math.floor(Date.now() / 1000) + session.expSec;
+
+        try {
+          await publishAlbumCleanupRecord({
+            signer: session.cleanupSigner,
+            relays: session.cleanupRelays,
+            manifestHash,
+            expiresAtUnix,
+            servers: session.servers,
+            blobHashes,
+            albumName: session.title,
+          });
+        } catch {
+          // Cleanup metadata publish is best-effort and must not fail album publish.
+        }
+      }
+
       sessionRef.current = null;
     },
     [],
@@ -274,13 +355,22 @@ export function useUpload(): UseUploadReturn {
       try {
         const nsecBytes = generateAlbumNsec();
         const albumKey = await deriveAlbumAESKey(nsecBytes);
-        const accountSigner = useNostrAccountStore.getState().signer;
+        const account = useNostrAccountStore.getState();
+        const accountSigner = account.signer;
+        const relayFallback = settings.reactions?.relays?.length
+          ? settings.reactions.relays
+          : DEFAULT_CLEANUP_RELAYS;
+        const cleanupRelays = account.pubkey
+          ? await resolveUserOutboxRelays(account.pubkey, relayFallback)
+          : relayFallback;
         const signer = accountSigner ?? createEphemeralSigner();
         const expSec = settings.expirationSeconds ?? DEFAULT_EXPIRATION_SECONDS;
         const session: UploadSession = {
           nsecBytes,
           albumKey,
           signer,
+          cleanupSigner: accountSigner as CleanupSigner | null,
+          cleanupRelays,
           servers,
           expSec,
           title: settings.title,

@@ -5,17 +5,35 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import { useSettings } from "@/hooks/useSettings";
 import { DEFAULT_BLOSSOM_SERVER } from "@/lib/config";
+import { useNostrAccountStore } from "@/store/nostrAccountStore";
+import { fetchUserSettingsConfig, publishUserSettingsConfig } from "@/lib/nostr/appSettings";
+import { resolveUserOutboxRelays } from "@/lib/nostr/relayList";
 
 vi.mock("@/lib/blossom/validate", () => ({
   validateBlossomServer: vi.fn().mockResolvedValue(true),
+}));
+vi.mock("@/lib/nostr/appSettings", () => ({
+  fetchUserSettingsConfig: vi.fn().mockResolvedValue(null),
+  publishUserSettingsConfig: vi.fn().mockResolvedValue(true),
+}));
+vi.mock("@/lib/nostr/relayList", () => ({
+  resolveUserOutboxRelays: vi.fn().mockResolvedValue(["wss://nos.lol"]),
 }));
 
 describe("useSettings", () => {
   beforeEach(() => {
     localStorage.clear();
+    vi.clearAllMocks();
+    useNostrAccountStore.setState({
+      pubkey: null,
+      signer: null,
+      type: null,
+      bunkerUri: null,
+      restoring: false,
+    });
   });
 
   it("initial blossomServer falls back to DEFAULT_BLOSSOM_SERVER when localStorage is empty (CONF-02)", () => {
@@ -55,5 +73,59 @@ describe("useSettings", () => {
     const { result } = renderHook(() => useSettings());
     expect(result.current.blossomServer).toBe("https://legacy.server");
     expect(result.current.blossomServers).toEqual(["https://legacy.server"]);
+  });
+
+  it("uses encrypted user config for logged-in users and keeps anon local config separate", async () => {
+    localStorage.setItem("keep-originals", "true");
+    localStorage.setItem("blossom-servers", JSON.stringify(["https://anon.server"]));
+
+    vi.mocked(fetchUserSettingsConfig).mockResolvedValue({
+      v: 1,
+      blossomServers: ["https://user.server"],
+      keepOriginals: false,
+      expiration: 86_400,
+      reactionsEnabled: true,
+      reactionRelays: ["wss://relay.user"],
+    });
+
+    const { result } = renderHook(() => useSettings());
+    expect(result.current.keepOriginals).toBe(true);
+    expect(result.current.blossomServers).toEqual(["https://anon.server"]);
+
+    const fakeSigner = {
+      getPublicKey: vi.fn().mockResolvedValue("pubkey1"),
+      signEvent: vi.fn(),
+      nip44: {
+        encrypt: vi.fn(),
+        decrypt: vi.fn(),
+      },
+    } as never;
+
+    act(() => {
+      useNostrAccountStore.getState().login("extension", fakeSigner, "pubkey1");
+    });
+
+    await waitFor(() => {
+      expect(result.current.blossomServers).toEqual(["https://user.server"]);
+      expect(result.current.keepOriginals).toBe(false);
+    });
+
+    act(() => {
+      result.current.setKeepOriginals(true);
+    });
+
+    await waitFor(() => {
+      expect(publishUserSettingsConfig).toHaveBeenCalled();
+    });
+    expect(resolveUserOutboxRelays).toHaveBeenCalledWith("pubkey1", ["wss://relay.user"]);
+
+    act(() => {
+      useNostrAccountStore.getState().logout();
+    });
+
+    await waitFor(() => {
+      expect(result.current.keepOriginals).toBe(true);
+      expect(result.current.blossomServers).toEqual(["https://anon.server"]);
+    });
   });
 });

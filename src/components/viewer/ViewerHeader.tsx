@@ -1,4 +1,5 @@
 import type { DownloadMode } from "@/hooks/useAlbumViewer";
+import { ICON_ACTION_BUTTON_ACTIVE_COLOR_CLASS, ICON_ACTION_BUTTON_CLASS, ICON_ACTION_BUTTON_COLOR_CLASS, ICON_ACTION_ICON_CLASS } from "@/components/ui/iconActionButton";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 
 interface ViewerHeaderProps {
@@ -31,8 +32,8 @@ export default function ViewerHeader({
   onDownloadAll,
 }: ViewerHeaderProps) {
   const headerClassName = `sticky top-0 z-30 flex items-center justify-between px-5 py-4 border-b border-zinc-800 bg-zinc-950 transition-transform duration-300${gridFullscreen ? " hidden" : ""} ${headerVisible ? "translate-y-0" : "-translate-y-full"}`;
-  const headerActionButtonClass = "h-9 w-9 items-center justify-center rounded-full transition-colors";
-  const downloadTriggerClass = `${headerActionButtonClass} flex disabled:opacity-50 disabled:cursor-not-allowed ${downloadMenuOpen ? "bg-zinc-700 text-white" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white"}`;
+  const fullscreenButtonClass = `${ICON_ACTION_BUTTON_CLASS} hidden md:flex ${ICON_ACTION_BUTTON_COLOR_CLASS}`;
+  const downloadTriggerClass = `${ICON_ACTION_BUTTON_CLASS} disabled:opacity-50 disabled:cursor-not-allowed ${downloadMenuOpen ? ICON_ACTION_BUTTON_ACTIVE_COLOR_CLASS : ICON_ACTION_BUTTON_COLOR_CLASS}`;
   const downloadMenuItemClass = "w-full flex items-center gap-2 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800 transition-colors";
 
   return (
@@ -51,7 +52,7 @@ export default function ViewerHeader({
         <p className="flex items-center gap-2 text-xs text-zinc-500">
           {photoCount} {photoCount === 1 ? "photo" : "photos"}
           {isExpired && (
-            <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-950 text-amber-400 border border-amber-800/60">
+            <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-rose-950/45 text-rose-200 border border-rose-500/45">
               <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
               </svg>
@@ -64,9 +65,9 @@ export default function ViewerHeader({
         <button
           onClick={onToggleFullscreen}
           aria-label="Toggle fullscreen"
-          className={`${headerActionButtonClass} hidden md:flex bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white`}
+          className={fullscreenButtonClass}
         >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <svg className={ICON_ACTION_ICON_CLASS} fill="none" viewBox="0 0 24 24" strokeWidth={1.9} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
           </svg>
         </button>
@@ -78,7 +79,7 @@ export default function ViewerHeader({
             aria-label="Download"
             className={downloadTriggerClass}
           >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <svg className={ICON_ACTION_ICON_CLASS} fill="none" viewBox="0 0 24 24" strokeWidth={1.9} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
             </svg>
           </button>

@@ -1,4 +1,4 @@
-const CACHE_NAME = "photoshare-v1";
+const CACHE_NAME = "photoshare-v2";
 const PRECACHE_URLS = ["/", "/index.html", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
@@ -39,6 +39,12 @@ self.addEventListener("fetch", (event) => {
       if (cached) return cached;
       return fetch(event.request).then((response) => {
         if (!response || response.status !== 200 || response.type !== "basic") {
+          return response;
+        }
+        const contentType = response.headers.get("content-type") || "";
+        // Never cache HTML for non-navigation requests. This prevents poisoned
+        // cache entries if a missing JS/CSS asset is rewritten to index.html.
+        if (contentType.includes("text/html")) {
           return response;
         }
         const copy = response.clone();

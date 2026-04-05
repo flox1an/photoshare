@@ -8,7 +8,7 @@ interface Point {
 
 interface LightboxImageStripProps {
   containerRef: RefObject<HTMLDivElement | null>;
-  bind: any;
+  bind: () => Record<string, unknown>;
   handleDoubleTap: () => void;
   prevPhoto: PhotoEntry | null;
   photo: PhotoEntry;

@@ -87,8 +87,8 @@ export function ShareCard({ shareLink, albumExpiresAt, isUploading, publishError
                 {window.location.origin + shareLink}
               </p>
             </div>
-            <p className="mt-2 rounded-lg border border-zinc-700/80 bg-zinc-800/35 px-3 py-2 text-xs text-zinc-400">
-              This link is only shown <strong className="text-zinc-300">ONCE</strong>. Make sure to save the share URL to access this album in the future.
+            <p className="mt-2 text-xs text-zinc-600">
+              Shown <strong className="text-zinc-500">once</strong> - save this link before leaving the page.
             </p>
           </div>
 

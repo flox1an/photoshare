@@ -255,7 +255,7 @@ export default function Lightbox({
   return (
     <div
       data-testid="lightbox-overlay"
-      className="fixed top-0 left-0 right-0 h-[100dvh] z-50 flex items-center justify-center bg-black select-none"
+      className="fixed top-0 left-0 right-0 h-[100dvh] z-50 flex items-center justify-center bg-black/85 backdrop-blur-md select-none"
       style={{ WebkitTouchCallout: "none" } as CSSProperties}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();

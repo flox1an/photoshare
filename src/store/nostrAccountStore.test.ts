@@ -54,7 +54,7 @@ describe('useNostrAccountStore', () => {
     expect(parsed.bunkerUri).toBe('bunker://pubkey?relay=wss://r.com')
   })
 
-  it('logout() clears state and removes localStorage entry', () => {
+  it('logout() clears state and removes persisted account', () => {
     useNostrAccountStore.getState().login('extension', {} as never, 'abc123')
     useNostrAccountStore.getState().logout()
     const s = useNostrAccountStore.getState()

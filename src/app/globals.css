@@ -93,3 +93,104 @@ body,
 [data-theme="light"] .hover\:text-zinc-200:hover { color: #27272a; }
 [data-theme="light"] .hover\:text-zinc-300:hover { color: #3f3f46; }
 [data-theme="light"] .hover\:text-zinc-400:hover { color: #52525b; }
+
+.mainpage-blob-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.mainpage-blob {
+  position: absolute;
+  width: 54vmax;
+  height: 54vmax;
+  left: -10vmax;
+  top: -12vmax;
+  border-radius: 54% 46% 62% 38% / 42% 58% 44% 56%;
+  background: radial-gradient(circle at 32% 32%, #7b4878 0%, #563d79 43%, #2d4274 100%);
+  filter: blur(62px) saturate(96%);
+  opacity: 0.55;
+  will-change: transform, border-radius;
+  animation: mainpage-blob-live 28s cubic-bezier(0.45, 0.05, 0.2, 0.98) infinite;
+}
+
+.mainpage-ambient-tone {
+  background:
+    radial-gradient(circle at 84% -8%, rgba(68, 83, 154, 0.18) 0%, transparent 48%),
+    radial-gradient(circle at 10% 88%, rgba(74, 51, 114, 0.14) 0%, transparent 52%),
+    linear-gradient(170deg, #080b15 0%, #070911 62%, #06070d 100%);
+}
+
+.mainpage-ambient-tone .bg-zinc-950 { background-color: #0c101b; }
+.mainpage-ambient-tone .bg-zinc-900 { background-color: #11182a; }
+.mainpage-ambient-tone .bg-zinc-900\/95 { background-color: rgb(17 24 42 / 0.95); }
+.mainpage-ambient-tone .bg-zinc-900\/50 { background-color: rgb(17 24 42 / 0.5); }
+.mainpage-ambient-tone .bg-zinc-800 { background-color: #171f34; }
+.mainpage-ambient-tone .bg-zinc-800\/60 { background-color: rgb(23 31 52 / 0.6); }
+.mainpage-ambient-tone .bg-zinc-800\/50 { background-color: rgb(23 31 52 / 0.5); }
+.mainpage-ambient-tone .bg-zinc-800\/40 { background-color: rgb(23 31 52 / 0.4); }
+.mainpage-ambient-tone .bg-zinc-700 { background-color: #222b46; }
+
+.mainpage-ambient-tone .text-zinc-600 { color: #7f88a9; }
+.mainpage-ambient-tone .text-zinc-500 { color: #9aa3c4; }
+.mainpage-ambient-tone .text-zinc-400 { color: #b0b8d4; }
+.mainpage-ambient-tone .text-zinc-300 { color: #c8d0e7; }
+.mainpage-ambient-tone .text-zinc-200 { color: #dde3f4; }
+.mainpage-ambient-tone .text-zinc-100 { color: #f2f5ff; }
+
+.mainpage-ambient-tone .border-zinc-800 { border-color: #27314d; }
+.mainpage-ambient-tone .border-zinc-700 { border-color: #313b5a; }
+.mainpage-ambient-tone .border-zinc-600 { border-color: #495277; }
+.mainpage-ambient-tone .border-zinc-500 { border-color: #5d6790; }
+.mainpage-ambient-tone .divide-zinc-800 > :not([hidden]) ~ :not([hidden]) { border-color: #27314d; }
+.mainpage-ambient-tone .placeholder-zinc-600::placeholder { color: #7f88a9; }
+.mainpage-ambient-tone .placeholder-zinc-500::placeholder { color: #9aa3c4; }
+.mainpage-ambient-tone .ring-zinc-500 { --tw-ring-color: #5d6790; }
+
+.mainpage-ambient-tone .hover\:bg-zinc-800:hover { background-color: #222c46; }
+.mainpage-ambient-tone .hover\:bg-zinc-700:hover { background-color: #2b3551; }
+.mainpage-ambient-tone .hover\:text-zinc-100:hover { color: #f8faff; }
+.mainpage-ambient-tone .hover\:text-zinc-300:hover { color: #d6dcf0; }
+.mainpage-ambient-tone .hover\:text-zinc-400:hover { color: #bfc7e1; }
+
+@keyframes mainpage-blob-live {
+  0% {
+    transform: translate3d(-9%, -7%, 0) scale(0.92) rotate(-8deg);
+    border-radius: 56% 44% 60% 40% / 44% 56% 46% 54%;
+  }
+  24% {
+    transform: translate3d(4%, -2%, 0) scale(1.06) rotate(2deg);
+    border-radius: 47% 53% 40% 60% / 57% 43% 61% 39%;
+  }
+  48% {
+    transform: translate3d(10%, 7%, 0) scale(1.16) rotate(9deg);
+    border-radius: 61% 39% 52% 48% / 37% 63% 42% 58%;
+  }
+  73% {
+    transform: translate3d(-2%, 10%, 0) scale(1.01) rotate(1deg);
+    border-radius: 42% 58% 55% 45% / 55% 45% 59% 41%;
+  }
+  100% {
+    transform: translate3d(-10%, -5%, 0) scale(0.95) rotate(-9deg);
+    border-radius: 54% 46% 62% 38% / 42% 58% 44% 56%;
+  }
+}
+
+@media (max-width: 700px) {
+  .mainpage-blob {
+    width: 62vmax;
+    height: 62vmax;
+    left: -14vmax;
+    top: -16vmax;
+    filter: blur(56px) saturate(94%);
+    opacity: 0.52;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mainpage-blob {
+    animation: none;
+  }
+}

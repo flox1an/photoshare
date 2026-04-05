@@ -3,6 +3,14 @@
 import { useState, useEffect } from 'react';
 import { DEFAULT_BLOSSOM_SERVER } from '@/lib/config';
 import { validateBlossomServer } from '@/lib/blossom/validate';
+import { useNostrAccountStore } from '@/store/nostrAccountStore';
+import { resolveUserOutboxRelays } from '@/lib/nostr/relayList';
+import {
+  fetchUserSettingsConfig,
+  publishUserSettingsConfig,
+  type AppSettingsSigner,
+  type UserSettingsConfig,
+} from '@/lib/nostr/appSettings';
 
 export const EXPIRATION_OPTIONS = [
   { label: '1 hour',  value: 3_600 },
@@ -17,6 +25,7 @@ export type ExpirationSeconds = typeof EXPIRATION_OPTIONS[number]['value'];
 export const DEFAULT_REACTION_RELAYS = [
   'wss://nos.lol',
 ];
+const REMOTE_PERSIST_DEBOUNCE_MS = 600;
 
 export interface UseSettingsReturn {
   blossomServers: string[];
@@ -37,6 +46,26 @@ export interface UseSettingsReturn {
   reactionRelays: string[];
   addReactionRelay: (url: string) => void;
   removeReactionRelay: (index: number) => void;
+}
+
+interface SettingsSnapshot {
+  blossomServers: string[];
+  keepOriginals: boolean;
+  expiration: ExpirationSeconds;
+  reactionsEnabled: boolean;
+  reactionRelays: string[];
+}
+
+const loggedInSettingsCache = new Map<string, SettingsSnapshot>();
+
+function defaultSnapshot(): SettingsSnapshot {
+  return {
+    blossomServers: [DEFAULT_BLOSSOM_SERVER],
+    keepOriginals: false,
+    expiration: 604_800,
+    reactionsEnabled: false,
+    reactionRelays: [...DEFAULT_REACTION_RELAYS],
+  };
 }
 
 function loadExpiration(): ExpirationSeconds {
@@ -97,52 +126,154 @@ function loadServers(): string[] {
   return [DEFAULT_BLOSSOM_SERVER];
 }
 
+function loadAnonSnapshot(): SettingsSnapshot {
+  return {
+    blossomServers: loadServers(),
+    keepOriginals: loadKeepOriginals(),
+    expiration: loadExpiration(),
+    reactionsEnabled: loadReactionsEnabled(),
+    reactionRelays: loadReactionRelays(),
+  };
+}
+
+function sanitizeRemoteSnapshot(config: UserSettingsConfig): SettingsSnapshot {
+  const expiration = EXPIRATION_OPTIONS.some((o) => o.value === config.expiration)
+    ? (config.expiration as ExpirationSeconds)
+    : 604_800;
+
+  return {
+    blossomServers: config.blossomServers.length > 0 ? config.blossomServers : [DEFAULT_BLOSSOM_SERVER],
+    keepOriginals: config.keepOriginals,
+    expiration,
+    reactionsEnabled: config.reactionsEnabled,
+    reactionRelays: config.reactionRelays.length > 0 ? config.reactionRelays : [...DEFAULT_REACTION_RELAYS],
+  };
+}
+
 export function useSettings(): UseSettingsReturn {
-  const [blossomServers, setBlossomServers] = useState<string[]>(loadServers);
-  const [keepOriginals, setKeepOriginalsState] = useState(loadKeepOriginals);
-  const [expiration, setExpirationState] = useState<ExpirationSeconds>(loadExpiration);
-  const [reactionsEnabled, setReactionsEnabledState] = useState(loadReactionsEnabled);
-  const [reactionRelays, setReactionRelays] = useState<string[]>(loadReactionRelays);
+  const pubkey = useNostrAccountStore((s) => s.pubkey);
+  const signer = useNostrAccountStore((s) => s.signer);
+  const restoring = useNostrAccountStore((s) => s.restoring);
+  const isLoggedIn = Boolean(pubkey && signer);
+
+  const [blossomServers, setBlossomServers] = useState<string[]>(() => loadAnonSnapshot().blossomServers);
+  const [keepOriginals, setKeepOriginalsState] = useState(() => loadAnonSnapshot().keepOriginals);
+  const [expiration, setExpirationState] = useState<ExpirationSeconds>(() => loadAnonSnapshot().expiration);
+  const [reactionsEnabled, setReactionsEnabledState] = useState(() => loadAnonSnapshot().reactionsEnabled);
+  const [reactionRelays, setReactionRelays] = useState<string[]>(() => loadAnonSnapshot().reactionRelays);
+  const [settingsReady, setSettingsReady] = useState(false);
+  const [skipRemotePersist, setSkipRemotePersist] = useState(true);
 
   useEffect(() => {
+    if (restoring) return;
+    let active = true;
+
+    const applySnapshot = (snapshot: SettingsSnapshot) => {
+      setBlossomServers(snapshot.blossomServers);
+      setKeepOriginalsState(snapshot.keepOriginals);
+      setExpirationState(snapshot.expiration);
+      setReactionsEnabledState(snapshot.reactionsEnabled);
+      setReactionRelays(snapshot.reactionRelays);
+    };
+
+    if (!isLoggedIn || !pubkey || !signer) {
+      applySnapshot(loadAnonSnapshot());
+      setSkipRemotePersist(true);
+      setSettingsReady(true);
+      return () => { active = false; };
+    }
+
+    setSettingsReady(false);
+    const cached = loggedInSettingsCache.get(pubkey) ?? defaultSnapshot();
+    applySnapshot(cached);
+    setSkipRemotePersist(true);
+
+    void (async () => {
+      try {
+        const fallbackRelays = cached.reactionRelays.length > 0 ? cached.reactionRelays : [...DEFAULT_REACTION_RELAYS];
+        const outboxRelays = await resolveUserOutboxRelays(pubkey, fallbackRelays);
+        const remote = await fetchUserSettingsConfig(signer as AppSettingsSigner, outboxRelays, pubkey);
+        const next = remote ? sanitizeRemoteSnapshot(remote) : cached;
+        loggedInSettingsCache.set(pubkey, next);
+        if (!active) return;
+        applySnapshot(next);
+      } catch {
+        if (!active) return;
+        applySnapshot(cached);
+      } finally {
+        if (active) setSettingsReady(true);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [isLoggedIn, pubkey, restoring, signer]);
+
+  useEffect(() => {
+    if (!settingsReady || isLoggedIn) return;
     try {
       localStorage.setItem('blossom-servers', JSON.stringify(blossomServers));
-    } catch {
-      // localStorage unavailable — ignore
-    }
-  }, [blossomServers]);
-
-  useEffect(() => {
-    try {
       localStorage.setItem('keep-originals', String(keepOriginals));
-    } catch {
-      // localStorage unavailable — ignore
-    }
-  }, [keepOriginals]);
-
-  useEffect(() => {
-    try {
       localStorage.setItem('blob-expiration', String(expiration));
-    } catch {
-      // localStorage unavailable — ignore
-    }
-  }, [expiration]);
-
-  useEffect(() => {
-    try {
       localStorage.setItem('reactions-enabled', String(reactionsEnabled));
-    } catch {
-      // localStorage unavailable — ignore
-    }
-  }, [reactionsEnabled]);
-
-  useEffect(() => {
-    try {
       localStorage.setItem('reaction-relays', JSON.stringify(reactionRelays));
     } catch {
       // localStorage unavailable — ignore
     }
-  }, [reactionRelays]);
+  }, [settingsReady, isLoggedIn, blossomServers, keepOriginals, expiration, reactionsEnabled, reactionRelays]);
+
+  useEffect(() => {
+    if (!settingsReady || !isLoggedIn || !pubkey || !signer) return;
+    if (skipRemotePersist) {
+      setSkipRemotePersist(false);
+      return;
+    }
+
+    const snapshot: SettingsSnapshot = {
+      blossomServers,
+      keepOriginals,
+      expiration,
+      reactionsEnabled,
+      reactionRelays,
+    };
+    loggedInSettingsCache.set(pubkey, snapshot);
+
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const fallbackRelays = reactionRelays.length > 0 ? reactionRelays : [...DEFAULT_REACTION_RELAYS];
+          const outboxRelays = await resolveUserOutboxRelays(pubkey, fallbackRelays);
+          const payload: UserSettingsConfig = {
+            v: 1,
+            blossomServers,
+            keepOriginals,
+            expiration,
+            reactionsEnabled,
+            reactionRelays,
+          };
+          await publishUserSettingsConfig(signer as AppSettingsSigner, outboxRelays, payload);
+        } catch {
+          // best-effort publish
+        }
+      })();
+    }, REMOTE_PERSIST_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [
+    settingsReady,
+    isLoggedIn,
+    pubkey,
+    signer,
+    skipRemotePersist,
+    blossomServers,
+    keepOriginals,
+    expiration,
+    reactionsEnabled,
+    reactionRelays,
+  ]);
 
   const addBlossomServer = async (url: string): Promise<{ error: string | null }> => {
     const normalized = url.trim().replace(/\/$/, '');

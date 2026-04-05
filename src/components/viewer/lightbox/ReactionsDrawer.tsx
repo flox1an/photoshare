@@ -26,7 +26,7 @@ export function ReactionsDrawer({
 
   return (
     <>
-      <div className="absolute inset-y-0 right-0 z-20 hidden md:flex w-80 flex-col bg-zinc-950/95 border-l border-zinc-800 backdrop-blur-sm">
+      <div className="absolute inset-y-0 right-0 z-20 hidden md:flex w-80 flex-col bg-zinc-950/80 border-l border-zinc-700/80 backdrop-blur-sm backdrop-saturate-125">
         <ReactionsPanel
           photoHash={photoHash}
           reactions={reactions}

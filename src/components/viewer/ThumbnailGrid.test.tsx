@@ -22,7 +22,6 @@ const samplePhotos: PhotoEntry[] = [
 ];
 
 describe("ThumbnailGrid", () => {
-  let mockObserverCallback: IntersectionObserverCallback;
   let observedElements: Element[];
 
   beforeEach(() => {
@@ -30,7 +29,6 @@ describe("ThumbnailGrid", () => {
 
     // Mock IntersectionObserver — immediately fires callback with isIntersecting: true
     window.IntersectionObserver = vi.fn().mockImplementation((callback: IntersectionObserverCallback) => {
-      mockObserverCallback = callback;
       return {
         observe: (el: Element) => {
           observedElements.push(el);

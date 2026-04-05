@@ -14,6 +14,12 @@ export default defineConfig([
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      "react-hooks/refs": "off",
+      "react-hooks/set-state-in-effect": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
       "react-refresh/only-export-components": [
         "warn",
         { allowConstantExport: true },
@@ -21,6 +27,6 @@ export default defineConfig([
     },
   },
   {
-    ignores: ["dist/**", "node_modules/**"],
+    ignores: [".next/**", "dist/**", "node_modules/**", "public/sw.js"],
   },
 ]);

@@ -1,5 +1,6 @@
 import { CommentIcon, HeartIcon } from "../icons";
 import RoundButton from "../RoundButton";
+import { ICON_ACTION_BUTTON_ACTIVE_COLOR_CLASS, ICON_ACTION_BUTTON_COLOR_CLASS, ICON_ACTION_ICON_CLASS } from "@/components/ui/iconActionButton";
 import type { PhotoReactions } from "@/hooks/useReactions";
 import type { PhotoEntry } from "@/types/album";
 import type { Dispatch, SetStateAction } from "react";
@@ -55,6 +56,7 @@ export function LightboxControls({
             onClick={() => void onReact(photo.hash)}
             disabled={hasReacted}
             aria-label={hasReacted ? "Liked" : "Like"}
+            colorClass={ICON_ACTION_BUTTON_COLOR_CLASS}
             className={hasReacted ? "disabled:opacity-100" : undefined}
           >
             <HeartIcon className={`h-5 w-5 shrink-0 ${hasReacted ? "text-rose-500" : ""}`} solid={hasReacted} />
@@ -74,18 +76,23 @@ export function LightboxControls({
             active={reactionsPanelOpen}
             onClick={() => setReactionsPanelOpen((open) => !open)}
             aria-label="Comments"
+            colorClass={reactionsPanelOpen ? ICON_ACTION_BUTTON_ACTIVE_COLOR_CLASS : ICON_ACTION_BUTTON_COLOR_CLASS}
           >
             <CommentIcon className="h-5 w-5 shrink-0" />
             {commentCount > 0 && <span className="tabular-nums">{commentCount}</span>}
           </RoundButton>
         )}
-        <RoundButton onClick={() => onDownload(currentIndex)} aria-label="Download">
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+        <RoundButton
+          onClick={() => onDownload(currentIndex)}
+          aria-label="Download"
+          colorClass={ICON_ACTION_BUTTON_COLOR_CLASS}
+        >
+          <svg className={ICON_ACTION_ICON_CLASS} fill="none" viewBox="0 0 24 24" strokeWidth={1.9} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
           </svg>
         </RoundButton>
-        <RoundButton onClick={onClose} aria-label="Close">
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+        <RoundButton onClick={onClose} aria-label="Close" colorClass={ICON_ACTION_BUTTON_COLOR_CLASS}>
+          <svg className={ICON_ACTION_ICON_CLASS} fill="none" viewBox="0 0 24 24" strokeWidth={1.9} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
           </svg>
         </RoundButton>
@@ -110,8 +117,9 @@ export function LightboxControls({
           } ${mobileNavVisible && !reactionsPanelOpen ? "max-md:opacity-100" : "max-md:opacity-0 max-md:pointer-events-none"}`}
           onClick={onPrev}
           aria-label="Previous"
+          colorClass={ICON_ACTION_BUTTON_COLOR_CLASS}
         >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <svg className={ICON_ACTION_ICON_CLASS} fill="none" viewBox="0 0 24 24" strokeWidth={1.9} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
           </svg>
         </RoundButton>
@@ -124,8 +132,9 @@ export function LightboxControls({
           } ${mobileNavVisible && !reactionsPanelOpen ? "max-md:opacity-100" : "max-md:opacity-0 max-md:pointer-events-none"}`}
           onClick={onNext}
           aria-label="Next"
+          colorClass={ICON_ACTION_BUTTON_COLOR_CLASS}
         >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <svg className={ICON_ACTION_ICON_CLASS} fill="none" viewBox="0 0 24 24" strokeWidth={1.9} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
           </svg>
         </RoundButton>
