@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Build im Node-Container, Auslieferung als nginx:alpine (SPA-Fallback).
-# Gebaut per GitHub Actions nach ghcr.io, deployt auf Coolify (home-network, Ticket 042).
+# Gebaut per GitHub Actions nach ghcr.io, deployt auf Coolify.
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
