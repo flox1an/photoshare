@@ -9,6 +9,7 @@ COPY . .
 RUN npm run build
 
 FROM nginx:alpine
+RUN apk add --no-cache 'brotli-libs>=1.2.1-r0'
 COPY <<'EOF' /etc/nginx/conf.d/default.conf
 server {
   listen 80;
